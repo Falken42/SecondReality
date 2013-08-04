@@ -1,14 +1,33 @@
-SecondReality
+OUYA/Android port of Second Reality
+===================================
+
+This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
+
+Current status:
+
+- Setting up build and GL rendering backend.  An .apk is generated, but nothing runs yet.
+
+
+Porting Notes
 =============
 
-Source code and data of Second Reality by Future Crew in 1993
+The intent is to port this demo making as little code changes to the original source as possible.
 
-This release is made to celebrate the 20th anniversary of the demo.
+The original code was written for DOS, and so is designed to execute a single function over a set of frames.  In other words, it is non-reentrant, which is different than the GL method of rendering where typically a render() function is called for each new frame.
 
-Wikipedia links :
+Fortunately, the demo was built around a system (called the Demo Interrupt Server, or DIS) which processed the music, updated the frame counter, set new palettes to the hardware, and so on.  The DIS also checked if the ESC key was pressed to terminate the demo, and this flag is checked by calling the dis\_exit() function which is used everywhere within the code.  This is what will be our hook to perform rendering.
 
-[Future Crew](http://www.wikipedia.org/wiki/Future_Crew)
-[Second Reality](http://www.wikipedia.org/wiki/Second_reality)
+Since the original demo used VGA modes for display, an 8-bit indexed color buffer and palette for 256 colors will be provided by the demo.  This will need to be converted to a 24-bit RGB texture in order to be displayed by GL.
+
+The demo does direct writes to memory location A000:0000 (the VGA frame buffer), which will need to be modified to point to our internal color buffer.  The outport() calls can be implemented to get updated palette information (and possibly other VGA mode info -- I haven't looked through the entire U2 codebase yet).
+
+Since each part was designed as a separate .exe file, this port will simply compile and statically link all of the parts together directly and call them in the order of the original demo (alleviating a lot of x86 assembly code).
+
+
+License
+=======
+
+The license for this port is the Unlicense, and is the same as the original Second Reality source ( https://github.com/mtuomi/SecondReality ):
 
 This is free and unencumbered software released into the public domain.
 
