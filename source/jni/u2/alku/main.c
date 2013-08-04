@@ -1,8 +1,4 @@
-#include <dos.h>
-#include <stdio.h>
-#include <conio.h>
-#include "tweak.h"
-#include "h:\u2\dis\dis.h"
+#include "../../u2-port.h"
 
 #define SCRLF 9
 
@@ -46,12 +42,12 @@ char	far tbuf[186][352];
 
 int	a=0,p=0,tptr=0;
 
-main()
+alku_main()
 	{
 	int	aa,b,c,x,y,f;
 
-	asm	mov	ax, 3
-	asm	int	10h
+//	asm	mov	ax, 3
+//	asm	int	10h
 
 	init();
 

@@ -12,18 +12,32 @@
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "demo", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "demo", __VA_ARGS__))
 
+char *hzpic;
+char font[31][1500];
+int frame_count;
+char *cop_pal;
+int do_pal;
+int cop_start;
+int cop_scrl;
+int cop_dofade;
+char *cop_fadepal;
+char *fadepal;
+
 struct demo
 {
 	struct android_app *app;
 	EGLDisplay display;
 	EGLSurface surface;
 	EGLContext context;
-	int rendering;
-	int width, height;
+	volatile int initialized, exitflag;
+	int disp_width, disp_height;
+	int tex_width, tex_height;
 	unsigned char *framebuffer;
 	float texu, texv;
 	GLuint texid;
 };
+
+struct demo *the_demo = NULL;
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -45,7 +59,7 @@ static int getMsec()
 }
 
 // initialize an EGL context for the current display
-static int demo_init_display(struct demo *demo)
+static int demo_init_display()
 {
 	// initialize OpenGL ES and EGL
 	const EGLint attribs[] = {
@@ -68,9 +82,9 @@ static int demo_init_display(struct demo *demo)
 	// pick the first EGLConfig that matches our criteria
 	eglChooseConfig(display, attribs, &config, 1, &numConfigs);
 	eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &format);
-	ANativeWindow_setBuffersGeometry(demo->app->window, 0, 0, format);
+	ANativeWindow_setBuffersGeometry(the_demo->app->window, 0, 0, format);
 
-	surface = eglCreateWindowSurface(display, config, demo->app->window, NULL);
+	surface = eglCreateWindowSurface(display, config, the_demo->app->window, NULL);
 	context = eglCreateContext(display, config, NULL, NULL);
 
 	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
@@ -82,19 +96,17 @@ static int demo_init_display(struct demo *demo)
 	eglQuerySurface(display, surface, EGL_WIDTH, &w);
 	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
 	LOGI("display: width=%d, height=%d", w, h);
-	demo->width  = w;
-	demo->height = h;
+	the_demo->disp_width  = w;
+	the_demo->disp_height = h;
 	
-	// calculate appropriate texture size and UV coordinates
-	int texwidth  = nextPow2(demo->width);
-	int texheight = nextPow2(demo->height);
-	demo->texu = demo->width  / (float)texwidth;
-	demo->texv = demo->height / (float)texheight;
-	LOGI("texture: width=%d, height=%d", texwidth, texheight);
+	// use a fixed size of 1024x1024 for the frame buffer texture
+	the_demo->tex_width  = 1024;
+	the_demo->tex_height = 1024;
+	LOGI("texture: width=%d, height=%d", the_demo->tex_width, the_demo->tex_height);
 
-	demo->display = display;
-	demo->context = context;
-	demo->surface = surface;
+	the_demo->display = display;
+	the_demo->context = context;
+	the_demo->surface = surface;
 
 	// initialize GL state
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
@@ -111,40 +123,44 @@ static int demo_init_display(struct demo *demo)
 	glLoadIdentity();
 
 	// generate and initialize a texture to display the rendered frame
-	glGenTextures(1, &demo->texid);
-	glBindTexture(GL_TEXTURE_2D, demo->texid);
+	glGenTextures(1, &the_demo->texid);
+	glBindTexture(GL_TEXTURE_2D, the_demo->texid);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texwidth, texheight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, the_demo->tex_width, the_demo->tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	
 	// allocate memory for the output RGB texture
-	const int size = demo->width * demo->height * 3;
-	demo->framebuffer = (unsigned char *)malloc(size);
-	memset(demo->framebuffer, 0, size);
-	
-	// initialize rendering state
-	demo->rendering = 1;
+	const int size = the_demo->tex_width * the_demo->tex_height * 3;
+	the_demo->framebuffer = (unsigned char *)malloc(size);
+	memset(the_demo->framebuffer, 0, size);
 	return 0;
 }
 
+static void demo_set_video_mode(int width, int height)
+{
+	the_demo->texu = the_demo->tex_width  / (float)width;
+	the_demo->texv = the_demo->tex_height / (float)height;
+	LOGI("render: width=%d, height=%d", width, height);
+}
+
 // render the current frame in the display
-static void demo_draw_frame(struct demo *demo)
+static void demo_draw_frame()
 {
 	const GLfloat verts[] = {
-		demo->width,	0.0f,
-		0.0f,			0.0f,
-		demo->width,	demo->height,
-		0.0f,			demo->height
+		the_demo->disp_width,	0.0f,
+		0.0f,					0.0f,
+		the_demo->disp_width,	the_demo->disp_height,
+		0.0f,					the_demo->disp_height
 	};
 	
 	const GLfloat texcoords[] = {
-		demo->texu,		0.0f,
-		0.0f,			0.0f,
-		demo->texu,		demo->texv,
-		0.0f,			demo->texv
+		the_demo->texu,			0.0f,
+		0.0f,					0.0f,
+		the_demo->texu,			the_demo->texv,
+		0.0f,					the_demo->texv
 	};
 	
-	if (demo->display == NULL)
+	if (the_demo->display == NULL)
 		return;
 
 	// clear the display to black
@@ -152,8 +168,8 @@ static void demo_draw_frame(struct demo *demo)
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	// update the GL texture
-	glBindTexture(GL_TEXTURE_2D, demo->texid);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, demo->width, demo->height, GL_RGB, GL_UNSIGNED_BYTE, demo->framebuffer);
+	glBindTexture(GL_TEXTURE_2D, the_demo->texid);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, the_demo->tex_width, the_demo->tex_height, GL_RGB, GL_UNSIGNED_BYTE, the_demo->framebuffer);
 
 	// setup rendering
 	glVertexPointer(2, GL_FLOAT, 0, verts);
@@ -165,29 +181,29 @@ static void demo_draw_frame(struct demo *demo)
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	
 	// and show the rendered surface to the display
-	eglSwapBuffers(demo->display, demo->surface);
+	eglSwapBuffers(the_demo->display, the_demo->surface);
 }
 
 // tear down the EGL context currently associated with the display
-static void demo_term_display(struct demo *demo)
+static void demo_term_display()
 {
-	if (demo->display != EGL_NO_DISPLAY)
+	if (the_demo->display != EGL_NO_DISPLAY)
 	{
-		eglMakeCurrent(demo->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+		eglMakeCurrent(the_demo->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
-		if (demo->context != EGL_NO_CONTEXT)
-			eglDestroyContext(demo->display, demo->context);
+		if (the_demo->context != EGL_NO_CONTEXT)
+			eglDestroyContext(the_demo->display, the_demo->context);
 
-		if (demo->surface != EGL_NO_SURFACE)
-			eglDestroySurface(demo->display, demo->surface);
+		if (the_demo->surface != EGL_NO_SURFACE)
+			eglDestroySurface(the_demo->display, the_demo->surface);
 
-		eglTerminate(demo->display);
+		eglTerminate(the_demo->display);
 	}
 
-	demo->rendering = 0;
-	demo->display = EGL_NO_DISPLAY;
-	demo->context = EGL_NO_CONTEXT;
-	demo->surface = EGL_NO_SURFACE;
+	the_demo->display  = EGL_NO_DISPLAY;
+	the_demo->context  = EGL_NO_CONTEXT;
+	the_demo->surface  = EGL_NO_SURFACE;
+	the_demo->exitflag = 1;
 }
 
 // process the next main command
@@ -201,26 +217,44 @@ static void demo_handle_cmd(struct android_app *app, int32_t cmd)
 			// the window is being shown, so initialize it
 			if (demo->app->window != NULL)
 			{
-				demo_init_display(demo);
-				demo_draw_frame(demo);
+				demo_init_display();
+				demo_draw_frame();
+				demo->initialized = 1;
 			}
 			break;
 
 		case APP_CMD_TERM_WINDOW:
 			// the window is being hidden or closed, clean it up
-			demo_term_display(demo);
-			break;
-
-		case APP_CMD_GAINED_FOCUS:
-			// our app gained focus, so restart rendering
-			demo->rendering = 1;
+			demo_term_display();
 			break;
 
 		case APP_CMD_LOST_FOCUS:
-			// our app lost focus, stop rendering
-			demo->rendering = 0;
-			demo_draw_frame(demo);
+			// our app lost focus, quit the demo
+			demo->exitflag = 1;
 			break;
+	}
+}
+
+static void demo_handle_events()
+{
+	int ident, events;
+	struct android_poll_source *source;
+
+	// read and process all pending events
+	while ((ident = ALooper_pollAll(0, NULL, &events, (void **)&source)) >= 0)
+	{
+		struct android_app *state = the_demo->app;
+
+		// process this event
+		if (source != NULL)
+			source->process(state, source);
+
+		// check if we are exiting
+		if (state->destroyRequested != 0)
+		{
+			demo_term_display();
+			return;
+		}
 	}
 }
 
@@ -236,33 +270,78 @@ void android_main(struct android_app *state)
 	state->userData = &demo;
 	state->onAppCmd = demo_handle_cmd;
 	demo.app = state;
+	the_demo = &demo;
 
-	// loop waiting for stuff to do
-	while (1)
-	{
-		// read all pending events
-		int ident;
-		int events;
-		struct android_poll_source *source;
+	// handle events until the window is initialized
+	while (!the_demo->initialized)
+		demo_handle_events();
 
-		// if not rendering, we will block forever waiting for events.
-		// if we are rendering, we loop until all events are read, then continue to draw the next frame of animation.
-		while ((ident = ALooper_pollAll(demo.rendering ? 0 : -1, NULL, &events, (void **)&source)) >= 0)
-		{
-			// process this event
-			if (source != NULL)
-				source->process(state, source);
-
-			// check if we are exiting
-			if (state->destroyRequested != 0)
-			{
-				demo_term_display(&demo);
-				return;
-			}
-		}
-
-		// done with events, so render next frame
-		if (demo.rendering)
-			demo_draw_frame(&demo);
-	}
+	// execute each part
+	alku_main();
 }
+
+char *MK_FP(int seg, int off)
+{
+	return 0;
+}
+
+void outport(unsigned short int port, unsigned char val)
+{
+}
+
+int outline(char *f, char *t)
+{
+	return 0;
+}
+
+int ascrolltext(int scrl, int *dtau)
+{
+	return 0;
+}
+
+void dis_partstart()
+{
+}
+
+int dis_sync()
+{
+//	LOGI("dis_sync");
+	return 0;
+}
+
+int dis_exit()
+{
+//	LOGI("dis_exit");
+	demo_handle_events();
+	return 0; // the_demo->exitflag;
+}
+
+int init_copper()
+{
+	return 0;
+}
+
+int close_copper()
+{
+	return 0;
+}
+
+void tw_opengraph()
+{
+	// set tweaked 640x400 mode
+	demo_set_video_mode(640, 400);
+}
+
+void tw_putpixel(int x, int y, int color)
+{
+}
+
+int tw_getpixel(int x, int y)
+{
+	return 0;
+}
+
+void tw_setpalette(void *pal)
+{
+}
+
