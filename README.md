@@ -3,12 +3,14 @@ OUYA/Android port of Second Reality
 
 This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
 
-_Current status_: An .apk is generated, but only a black screen is visible.  No audio.
+_Current status_: The first part of the demo executes, but only a black screen is visible.  No audio is available yet.
 
 - First part (alku) compiles and fully executes to completion.
 - The build system and the GL rendering backend is complete.
 
 To build, clone the repository and run 'make' in the source folder.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
+
+The demo's runtime progress can be viewed with adb logcat.  The demo will automatically terminate after the first part completes.
 
 If you are interested in helping, Pull Requests are welcomed.
 
