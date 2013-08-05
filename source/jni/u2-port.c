@@ -6,23 +6,27 @@
 #include <EGL/egl.h>
 #include <GLES/gl.h>
 
-#include <android/log.h>
 #include <android_native_app_glue.h>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "demo", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "demo", __VA_ARGS__))
+#include "u2-port.h"
 
+// Second Reality externed variables
 char *hzpic;
-char font[31][1500];
-int frame_count;
+char  font[31][1500];
+int   frame_count;
 char *cop_pal;
-int do_pal;
-int cop_start;
-int cop_scrl;
-int cop_dofade;
+int   do_pal;
+int   cop_start;
+int   cop_scrl;
+int   cop_dofade;
 char *cop_fadepal;
 char *fadepal;
 
+// internal variables (for timing, etc)
+static int last_frame_time;
+static int dis_sync_val, dis_sync_time;
+
+// GL/Android data struct
 struct demo
 {
 	struct android_app *app;
@@ -33,11 +37,12 @@ struct demo
 	int disp_width, disp_height;
 	int tex_width, tex_height;
 	unsigned char *framebuffer;
+	unsigned char *vga_pal, *vga_mem[4];
 	float texu, texv;
 	GLuint texid;
 };
 
-struct demo *the_demo = NULL;
+static struct demo *the_demo = NULL;
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -50,12 +55,17 @@ static int nextPow2(int val)
 	return next;
 }
 
-// get current time in milliseconds
-static int getMsec()
+// get current time in microseconds
+static int getUsec()
 {
 	struct timeval t;
 	gettimeofday(&t, NULL);
-	return (t.tv_sec * 1000) + (t.tv_usec / 1000);
+	return (t.tv_sec * 1000000) + t.tv_usec;
+}
+
+static int getUsecDiff(int time)
+{
+	return getUsec() - time;
 }
 
 // initialize an EGL context for the current display
@@ -133,6 +143,18 @@ static int demo_init_display()
 	const int size = the_demo->tex_width * the_demo->tex_height * 3;
 	the_demo->framebuffer = (unsigned char *)malloc(size);
 	memset(the_demo->framebuffer, 0, size);
+
+	// allocate memory for the emulated VGA palette
+	the_demo->vga_pal = (unsigned char *)malloc(768);
+	memset(the_demo->vga_pal, 0, 768);
+
+	// and the emulated VGA memory area (four planes at 64KB each)
+	for (h = 0; h < 4; h++)
+	{
+		the_demo->vga_mem[h] = (unsigned char *)malloc(65536);
+		memset(the_demo->vga_mem[h], 0, 65536);
+	}
+
 	return 0;
 }
 
@@ -276,13 +298,27 @@ void android_main(struct android_app *state)
 	while (!the_demo->initialized)
 		demo_handle_events();
 
+	// initialize internal state
+	frame_count     = 0;
+	last_frame_time = getUsec();
+	dis_sync_val    = 0;
+	dis_sync_time   = last_frame_time;
+
 	// execute each part
 	alku_main();
+
+	// end ourselves
+	exit(0);
 }
 
 char *MK_FP(int seg, int off)
 {
-	return 0;
+	// if segment points to VGA memory, then return a pointer to our emulated VGA buffer instead
+	if (seg == 0xA000)
+		return the_demo->vga_mem[0] + off;		// FIXME: only plane 0 for now, need to work with outport() and swap buffers
+
+	// otherwise, return a valid pointer to memory
+	return (char *)((seg << 16) + off);
 }
 
 void outport(unsigned short int port, unsigned char val)
@@ -305,13 +341,35 @@ void dis_partstart()
 
 int dis_sync()
 {
-//	LOGI("dis_sync");
-	return 0;
+//	LOGI("dis_sync = %d", dis_sync_val);
+
+	// COMPLETE HACK (for now): increment sync every 7.5 seconds
+	const int now = getUsec();
+	if ((now - dis_sync_time) >= (7500 * 1000))
+	{
+		dis_sync_val++;
+		dis_sync_time = now;
+		LOGI("dis_sync incremented to = %d", dis_sync_val);
+	}
+
+	return dis_sync_val;
 }
 
 int dis_exit()
 {
-//	LOGI("dis_exit");
+//	LOGI("dis_exit: frame_count = %d", frame_count);
+
+	// render a frame every 16.666 msec (60Hz vblank)
+	const int now = getUsec();
+	if ((now - last_frame_time) >= 16666)
+	{
+		frame_count++;
+		last_frame_time = now;
+
+		// just to let part 1 continue...
+		cop_dofade = 0;
+	}
+
 	demo_handle_events();
 	return 0; // the_demo->exitflag;
 }

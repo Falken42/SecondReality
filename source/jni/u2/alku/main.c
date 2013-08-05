@@ -288,6 +288,7 @@ prt(int x,int y,char *txt)
 
 prtc(int x,int y,char *txt)
 {
+	LOGI("prtc(%d, %d, \"%s\")", x, y, txt);
 	int	w=0;
 	char	*t=txt;
 	while(*t) w+=fonaw[*t++]+2;
@@ -303,7 +304,7 @@ dofade(char far *pal1, char far *pal2)
 		{
 		for(b=0;b<768;b++) pal[b]=(pal1[b]*(64-a)+pal2[b]*a>>6);
 		cop_pal=pal; do_pal=1;
-		while(frame_count<1); frame_count=0;
+		while(frame_count<1 && !dis_exit()); frame_count=0;
 		}
 	}
 char	fuckpal[768];
@@ -322,6 +323,7 @@ addtext(int tx,int ty,char *txt)
 	int	a,b,c,x,y,w=0;
 	char	*t=txt;
 
+LOGI("addtext(%d, %d, \"%s\")", tx, ty, txt);
 	while(*t) w+=fonaw[*t++]+2;
 
 	t=txt; w/=2;
@@ -392,8 +394,8 @@ scrolltext(int scrl)
 
 do_scroll(int mode)
 	{
-	if(mode==0 && frame_count<SCRLF) return(0);
-	while(frame_count<SCRLF);
+	if(mode==0 && frame_count<SCRLF && !dis_exit()) return(0);
+	while(frame_count<SCRLF && !dis_exit());
 	frame_count-=SCRLF;
 	if(mode==1) ascrolltext(a+p*352,dtau);
 	cop_start=a/4+p*88; cop_scrl=(a&3)*2;
@@ -415,6 +417,7 @@ faddtext(int tx,int ty,char *txt)
 	int	a,b,c,x,y,w=0;
 	char	*t=txt;
 
+LOGI("faddtext(%d, %d, \"%s\")", tx, ty, txt);
 	while(*t) w+=fonaw[*t++]+2;
 
 	t=txt; w/=2;

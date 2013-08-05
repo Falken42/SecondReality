@@ -5,10 +5,12 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 _Current status_: An .apk is generated, but only a black screen is visible.  No audio.
 
-- First part (alku) compiles and begins execution.
+- First part (alku) compiles and fully executes to completion.
 - The build system and the GL rendering backend is complete.
 
 To build, clone the repository and run 'make' in the source folder.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
+
+If you are interested in helping, Pull Requests are welcomed.
 
 
 Porting Notes
