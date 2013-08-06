@@ -22,9 +22,12 @@ int   cop_dofade;
 char *cop_fadepal;
 char *fadepal;
 
-// internal variables (for timing, etc)
+// internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time;
+static unsigned int vga_width, vga_height;
+static unsigned char vga_pal[768], *vga_mem[4];
+static unsigned char vga_pal_index, vga_pal_comp;
 
 // GL/Android data struct
 struct demo
@@ -37,7 +40,6 @@ struct demo
 	int disp_width, disp_height;
 	int tex_width, tex_height;
 	unsigned char *framebuffer;
-	unsigned char *vga_pal, *vga_mem[4];
 	float texu, texv;
 	GLuint texid;
 };
@@ -144,15 +146,11 @@ static int demo_init_display()
 	the_demo->framebuffer = (unsigned char *)malloc(size);
 	memset(the_demo->framebuffer, 0, size);
 
-	// allocate memory for the emulated VGA palette
-	the_demo->vga_pal = (unsigned char *)malloc(768);
-	memset(the_demo->vga_pal, 0, 768);
-
-	// and the emulated VGA memory area (four planes at 64KB each)
+	// allocate the emulated VGA memory area (four planes at 64KB each)
 	for (h = 0; h < 4; h++)
 	{
-		the_demo->vga_mem[h] = (unsigned char *)malloc(65536);
-		memset(the_demo->vga_mem[h], 0, 65536);
+		vga_mem[h] = (unsigned char *)malloc(65536);
+		memset(vga_mem[h], 0, 65536);
 	}
 
 	return 0;
@@ -160,12 +158,15 @@ static int demo_init_display()
 
 static void demo_set_video_mode(int width, int height)
 {
-	the_demo->texu = the_demo->tex_width  / (float)width;
-	the_demo->texv = the_demo->tex_height / (float)height;
-	LOGI("render: width=%d, height=%d", width, height);
+	vga_width  = width;
+	vga_height = height;
+
+	the_demo->texu = vga_width  / (float)the_demo->tex_width;
+	the_demo->texv = vga_height / (float)the_demo->tex_height;
+	LOGI("render: width=%d, height=%d", vga_width, vga_height);
 }
 
-// render the current frame in the display
+// show the current framebuffer on the display
 static void demo_draw_frame()
 {
 	const GLfloat verts[] = {
@@ -189,9 +190,9 @@ static void demo_draw_frame()
 	glClearColor(0.0f, 0.0f, 0.0f, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
-	// update the GL texture
+	// update the GL texture (optimize the texture upload by only sending up to the visible height)
 	glBindTexture(GL_TEXTURE_2D, the_demo->texid);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, the_demo->tex_width, the_demo->tex_height, GL_RGB, GL_UNSIGNED_BYTE, the_demo->framebuffer);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, the_demo->tex_width, vga_height, GL_RGB, GL_UNSIGNED_BYTE, the_demo->framebuffer);
 
 	// setup rendering
 	glVertexPointer(2, GL_FLOAT, 0, verts);
@@ -204,6 +205,35 @@ static void demo_draw_frame()
 	
 	// and show the rendered surface to the display
 	eglSwapBuffers(the_demo->display, the_demo->surface);
+}
+
+static void demo_render_frame()
+{
+	int w, h;
+
+	// for now, determine chained/unchained rendering by checking the video mode
+	if (vga_height == 200)
+	{
+		// mode 13h, convert linear VRAM to 24-bit RGB
+		const char *src = vga_mem[0];
+		for (h = 0; h < vga_height; h++)
+		{
+			char *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
+			for (w = 0; w < vga_width; w++)
+			{
+				// read color index from VGA
+				const int idx = (*src++) * 3;
+
+				// write RGB colors (scaling up 6 bit to 8 bit)
+				*dest++ = vga_pal[idx    ] << 2;
+				*dest++ = vga_pal[idx + 1] << 2;
+				*dest++ = vga_pal[idx + 2] << 2;
+			}
+		}
+	}
+
+	// show the new frame buffer
+	demo_draw_frame();
 }
 
 // tear down the EGL context currently associated with the display
@@ -304,8 +334,29 @@ void android_main(struct android_app *state)
 	dis_sync_val    = 0;
 	dis_sync_time   = last_frame_time;
 
+#if 0
+	// test standard mode 13h rendering
+	int t;
+	demo_set_video_mode(320, 200);
+
+	// setup palette: 64 entries each of reds, greens, blues, and greyscale
+	outport(0x3C8, 0);
+	for (t = 0; t < 64; t++) { outport(0x3C9, t); outport(0x3C9, 0); outport(0x3C9, 0); }
+	for (t = 0; t < 64; t++) { outport(0x3C9, 0); outport(0x3C9, t); outport(0x3C9, 0); }
+	for (t = 0; t < 64; t++) { outport(0x3C9, 0); outport(0x3C9, 0); outport(0x3C9, t); }
+	for (t = 0; t < 64; t++) { outport(0x3C9, t); outport(0x3C9, t); outport(0x3C9, t); }
+
+	// draw pixels to the VRAM area
+	char *vmem = MK_FP(0xA000, 0);
+	for (t = 0; t < 320 * 200; t++)
+		*vmem++ = (unsigned char)(t >> 4);
+
+	// show it for 10 seconds
+	while (frame_count < 600 && !dis_exit());
+#else
 	// execute each part
 	alku_main();
+#endif
 
 	// end ourselves
 	exit(0);
@@ -315,14 +366,34 @@ char *MK_FP(int seg, int off)
 {
 	// if segment points to VGA memory, then return a pointer to our emulated VGA buffer instead
 	if (seg == 0xA000)
-		return the_demo->vga_mem[0] + off;		// FIXME: only plane 0 for now, need to work with outport() and swap buffers
+		return vga_mem[0] + off;		// FIXME: only plane 0 for now, need to work with outport() and swap buffers
 
 	// otherwise, return a valid pointer to memory
 	return (char *)((seg << 16) + off);
 }
 
-void outport(unsigned short int port, unsigned char val)
+void outport(unsigned short int port, unsigned short int val)
 {
+	switch (port)
+	{
+		case 0x3C8:
+			// set palette color index, starting with red component
+			vga_pal_index = val;
+			vga_pal_comp  = 0;
+			break;
+
+		case 0x3C9:
+			// set palette entry
+			vga_pal[(vga_pal_index * 3) + vga_pal_comp] = val;
+
+			// increment component, check for rollover
+			if ((++vga_pal_comp) >= 3)
+			{
+				vga_pal_index++;
+				vga_pal_comp = 0;
+			}
+			break;
+	}
 }
 
 int outline(char *f, char *t)
@@ -366,7 +437,10 @@ int dis_exit()
 		frame_count++;
 		last_frame_time = now;
 
-		// just to let part 1 continue...
+		// render this frame
+		demo_render_frame();
+
+		// FIXME: just to let part 1 continue...
 		cop_dofade = 0;
 	}
 

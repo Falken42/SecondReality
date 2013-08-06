@@ -5,6 +5,7 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 _Current status_: The first part of the demo executes, but only a black screen is visible.  No audio is available yet.
 
+- Mode 13h VGA emulation and palette register sets is complete.
 - First part (alku) compiles and fully executes to completion.
 - The build system and the GL rendering backend is complete.
 
