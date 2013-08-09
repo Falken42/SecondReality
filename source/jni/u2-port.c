@@ -7,6 +7,7 @@
 #include <GLES/gl.h>
 
 #include <android_native_app_glue.h>
+#include <android/asset_manager.h>
 
 #include "u2-port.h"
 
@@ -44,6 +45,7 @@ struct demo
 	GLuint texid;
 };
 
+static AAssetManager *android_asset_manager;
 static struct demo *the_demo = NULL;
 
 // round value to next power of two (or return same if already a power of two)
@@ -212,14 +214,14 @@ static void demo_render_frame()
 	int w, h;
 
 	// for now, determine chained/unchained rendering by checking the video mode
-	if (vga_height == 200)
+	if (1) //vga_height == 200)
 	{
 		// mode 13h, convert linear VRAM to 24-bit RGB
 		const char *src = vga_mem[0];
-		for (h = 0; h < vga_height; h++)
+		for (h = 0; h < 200 /* vga_height */; h++)
 		{
 			char *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
-			for (w = 0; w < vga_width; w++)
+			for (w = 0; w < 320 /* vga_width */; w++)
 			{
 				// read color index from VGA
 				const int idx = (*src++) * 3;
@@ -310,6 +312,119 @@ static void demo_handle_events()
 	}
 }
 
+// android asset fopen technique from: http://www.50ply.com/blog/2013/01/19/loading-compressed-android-assets-with-file-pointer/
+static int android_fread(void *cookie, char *buf, int size)
+{
+	return AAsset_read((AAsset *)cookie, buf, size);
+}
+
+static int android_fwrite(void *cookie, const char *buf, int size)
+{
+	return EACCES;
+}
+
+static fpos_t android_fseek(void *cookie, fpos_t offset, int whence)
+{
+	return AAsset_seek((AAsset *)cookie, offset, whence);
+}
+
+static int android_fclose(void *cookie)
+{
+	AAsset_close((AAsset *)cookie);
+	return 0;
+}
+
+static FILE *android_fopen(const char *fname, const char *mode)
+{
+	if (mode[0] == 'w')
+		return NULL;
+
+	AAsset *asset = AAssetManager_open(android_asset_manager, fname, 0);
+	if (!asset)
+		return NULL;
+
+	return funopen(asset, android_fread, android_fwrite, android_fseek, android_fclose);
+}
+
+static void *demo_load_assetsz(const char *fname, int *size)
+{
+	LOGI("load_asset: loading [%s]...", fname);
+	FILE *fp = android_fopen(fname, "rb");
+	if (fp == NULL)
+	{
+		LOGW("failed to open [%s]!", fname);
+		return NULL;
+	}
+
+	// get size of asset
+	fseek(fp, 0, SEEK_END);
+	*size = ftell(fp);
+	rewind(fp);
+
+	// allocate memory and load
+	void *res = malloc(*size);
+	fread(res, 1, *size, fp);
+	fclose(fp);
+	return res;
+}
+
+static void *demo_load_asset(const char *fname)
+{
+	int dummy;
+	return demo_load_assetsz(fname, &dummy);
+}
+
+static void *demo_load_asminc(const char *fname)
+{
+	const int block_size = 16 * 1024;
+
+	int size;
+	char *inc = demo_load_assetsz(fname, &size);
+	if (inc == NULL)
+		return NULL;
+
+	char *src = inc;
+	char *end = inc + size;
+
+	uint8_t *res  = NULL;
+	uint8_t *dest = NULL;
+	int total     = 0;
+
+	// parse the assembly file
+	for (;;)
+	{
+		// skip over spaces, tabs, crlfs, or the letters 'd' and 'b'
+		while ((src < end) && ((*src == ' ') || (*src == '\t') || (*src == '\r') || (*src == '\n') || (*src == 'd') || (*src == 'b')))
+			src++;
+
+		if (src >= end)
+			break;
+
+		// advance until we reach a non-integer character
+		char *next = src;
+		while ((next < end) && ((*next == '-') || isdigit(*next)))
+			next++;
+
+		*next = 0;
+
+		// check if we need to expand our destination buffer
+		const int dist = dest - res;
+		if (dist >= total)
+		{
+			total += block_size;
+			res    = realloc(res, total);
+			dest   = res + dist;
+		}
+
+		// convert this value
+		*dest++ = atoi(src);
+		src = next + 1;
+	}
+
+	free(inc);
+	return res;
+}
+
 // the main entry point of a native application that uses android_native_app_glue.  it runs in its own thread, with its own event loop for receiving input events.
 void android_main(struct android_app *state)
 {
@@ -321,6 +436,7 @@ void android_main(struct android_app *state)
 	memset(&demo, 0, sizeof(demo));
 	state->userData = &demo;
 	state->onAppCmd = demo_handle_cmd;
+	android_asset_manager = state->activity->assetManager;
 	demo.app = state;
 	the_demo = &demo;
 
@@ -354,6 +470,14 @@ void android_main(struct android_app *state)
 	// show it for 10 seconds
 	while (frame_count < 600 && !dis_exit());
 #else
+	void *tmp = demo_load_asminc("fona.inc");
+	memcpy(font, tmp, sizeof(font));
+	free(tmp);
+
+	int t;
+	outport(0x3C8, 1);
+	for (t = 1; t < 256; t++) { outport(0x3C9, 63); outport(0x3C9, 63); outport(0x3C9, 63); }
+
 	// execute each part
 	alku_main();
 #endif
@@ -408,6 +532,7 @@ int ascrolltext(int scrl, int *dtau)
 
 void dis_partstart()
 {
+	LOGI("---------- starting next part ----------");
 }
 
 int dis_sync()
@@ -466,6 +591,9 @@ void tw_opengraph()
 
 void tw_putpixel(int x, int y, int color)
 {
+//	LOGI("putpixel: x=[%d], y=[%d], col=[%d]", x, y, color);
+	if (y >= 200) return; // for now, so we don't overwrite memory
+	*(vga_mem[0] + (320 * y) + x) = color;
 }
 
 int tw_getpixel(int x, int y)
