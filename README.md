@@ -9,6 +9,7 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 *Running on a Kindle Fire HD*
 
+- Copper palette emulation (fading in/out) is complete.
 - Support for loading the demo's assets into memory is complete.
 - Mode 13h VGA emulation and palette register sets is complete.
 - First part (alku) compiles and fully executes to completion.
@@ -24,17 +25,15 @@ If you are interested in helping, Pull Requests are welcomed.
 Porting Notes
 =============
 
-The intent is to port this demo making as little code changes to the original source as possible.
+This port basically implements a VGA emulation layer by hooking functions at the C library level.  This allows the demo to run natively while making as little code changes to the original source as possible.
 
-The original code was written for DOS, and so is designed to execute a single function over a set of frames.  In other words, it is non-reentrant, which is different than the GL method of rendering where typically a render() function is called for each new frame.
+For example, the macro MK\_FP() which is used to create a far pointer to a memory block has been replaced with a function.  This function detects if the memory block being requested is in the DOS VGA memory area (A000:0000), and if it is, it returns a pointer to an emulated VGA memory buffer.
 
-Fortunately, the demo was built around a system (called the Demo Interrupt Server, or DIS) which processed the music, updated the frame counter, set new palettes to the hardware, and so on.  The DIS also checked if the ESC key was pressed to terminate the demo, and this flag is checked by calling the dis\_exit() function which is used everywhere within the code.  This is what will be our hook to perform rendering.
+Another function, outport(), is used to directly access the VGA hardware.  Since the C library no longer provides this function, we provide it instead, and emulate the VGA hardware accesses being made at runtime.
 
-Since the original demo used VGA modes for display, an 8-bit indexed color buffer and palette for 256 colors will be provided by the demo.  This will need to be converted to a 24-bit RGB texture in order to be displayed by GL.
+The demo calls an internal function called dis\_exit() to determine if the ESC key has been pressed and the demo should quit.  This function is called throughout the entire code, and is the main hook used for rendering.  After a simulated VBlank has passed (16.667ms @ 60fps), the current VGA buffers and palette are combined into a frame buffer, uploaded as a texture to OpenGL, and rendered as a fullscreen polygon.
 
-The demo does direct writes to memory location A000:0000 (the VGA frame buffer), which will need to be modified to point to our internal color buffer.  The outport() calls can be implemented to get updated palette information (and possibly other VGA mode info -- I haven't looked through the entire U2 codebase yet).
-
-Since each part was designed as a separate .exe file, this port will simply compile and statically link all of the parts together directly and call them in the order of the original demo (alleviating a lot of x86 assembly code).
+Instead of handling each part as a separate executable, this port will simply compile and statically link all of the parts together and call them directly in the order of the original demo (alleviating a lot of x86 assembly code).
 
 
 License

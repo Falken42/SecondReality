@@ -12,8 +12,8 @@
 #include "u2-port.h"
 
 // Second Reality externed variables
-char *hzpic;
-char  font[31][1500];
+char  hzpic[65535 + 63250];		// sizes calced from parsed .inc data
+char  font[32][1500];			// incremented to 32 to handle out-of-bounds access in alku
 int   frame_count;
 char *cop_pal;
 int   do_pal;
@@ -348,11 +348,10 @@ static FILE *android_fopen(const char *fname, const char *mode)
 
 static void *demo_load_assetsz(const char *fname, int *size)
 {
-	LOGI("load_asset: loading [%s]...", fname);
 	FILE *fp = android_fopen(fname, "rb");
 	if (fp == NULL)
 	{
-		LOGW("failed to open [%s]!", fname);
+		LOGW("load_asset: failed to open [%s]!", fname);
 		return NULL;
 	}
 
@@ -362,6 +361,7 @@ static void *demo_load_assetsz(const char *fname, int *size)
 	rewind(fp);
 
 	// allocate memory and load
+	LOGI("load_asset: loading [%s] (%d bytes)...", fname, *size);
 	void *res = malloc(*size);
 	fread(res, 1, *size, fp);
 	fclose(fp);
@@ -374,17 +374,17 @@ static void *demo_load_asset(const char *fname)
 	return demo_load_assetsz(fname, &dummy);
 }
 
-static void *demo_load_asminc(const char *fname)
+static void *demo_load_asmincsz(const char *fname, int *size)
 {
 	const int block_size = 16 * 1024;
 
-	int size;
-	char *inc = demo_load_assetsz(fname, &size);
+	int asset_size;
+	char *inc = demo_load_assetsz(fname, &asset_size);
 	if (inc == NULL)
 		return NULL;
 
 	char *src = inc;
-	char *end = inc + size;
+	char *end = inc + asset_size;
 
 	uint8_t *res  = NULL;
 	uint8_t *dest = NULL;
@@ -422,7 +422,32 @@ static void *demo_load_asminc(const char *fname)
 	}
 
 	free(inc);
+	*size = dest - res;
+	LOGI("load_asminc: parsed to [%d] binary bytes", *size);
 	return res;
+}
+
+static void *demo_load_asminc(const char *fname)
+{
+	int dummy;
+	return demo_load_asmincsz(fname, &dummy);
+}
+
+static void *demo_append_asminc(void *data, const char *fname, int *size)
+{
+	int size2;
+	void *data2 = demo_load_asmincsz(fname, &size2);
+	if (data2 == NULL)
+		return NULL;
+
+	data = realloc(data, *size + size2);
+	if (data == NULL)
+		return NULL;
+
+	memcpy((char *)data + *size, data2, size2);
+	free(data2);
+	*size += size2;
+	return data;
 }
 
 // the main entry point of a native application that uses android_native_app_glue.  it runs in its own thread, with its own event loop for receiving input events.
@@ -470,13 +495,18 @@ void android_main(struct android_app *state)
 	// show it for 10 seconds
 	while (frame_count < 600 && !dis_exit());
 #else
-	void *tmp = demo_load_asminc("fona.inc");
+	int size;
+	void *tmp;
+
+	// load assets
+	tmp = demo_load_asminc("fona.inc");
 	memcpy(font, tmp, sizeof(font));
 	free(tmp);
 
-	int t;
-	outport(0x3C8, 1);
-	for (t = 1; t < 256; t++) { outport(0x3C9, 63); outport(0x3C9, 63); outport(0x3C9, 63); }
+	tmp = demo_load_asmincsz("hoi.in0", &size);
+	tmp = demo_append_asminc(tmp, "hoi.in1", &size);
+	memcpy(hzpic, tmp, size);
+	free(tmp);
 
 	// execute each part
 	alku_main();
@@ -559,6 +589,13 @@ int dis_exit()
 	const int now = getUsec();
 	if ((now - last_frame_time) >= 16666)
 	{
+		// handle copper palette updates
+		if (do_pal)
+		{
+			tw_setpalette(cop_pal);
+			do_pal = 0;
+		}
+
 		frame_count++;
 		last_frame_time = now;
 
@@ -603,5 +640,11 @@ int tw_getpixel(int x, int y)
 
 void tw_setpalette(void *pal)
 {
+	uint8_t *ptr = (uint8_t *)pal;
+	int cnt = 768;
+
+	outport(0x3C8, 0);
+	while (cnt--)
+		outport(0x3C9, *ptr++);
 }
 
