@@ -13,6 +13,7 @@
 #define FP_OFF(x)			(x)
 
 extern char *MK_FP(int seg, int off);
+extern void outportb(unsigned short int port, unsigned char val);
 extern void outport(unsigned short int port, unsigned short int val);
 
 extern int  outline(char *f, char *t);

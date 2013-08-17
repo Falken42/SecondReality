@@ -27,8 +27,8 @@ char *fadepal;
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time;
 static unsigned int vga_width, vga_height;
-static unsigned char vga_pal[768], *vga_mem[4];
-static unsigned char vga_pal_index, vga_pal_comp;
+static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
+static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_cur_plane, vga_chain4;
 
 // GL/Android data struct
 struct demo
@@ -40,7 +40,7 @@ struct demo
 	volatile int initialized, exitflag;
 	int disp_width, disp_height;
 	int tex_width, tex_height;
-	unsigned char *framebuffer;
+	uint8_t *framebuffer;
 	float texu, texv;
 	GLuint texid;
 };
@@ -57,6 +57,26 @@ static int nextPow2(int val)
 		next <<= 1;
 	
 	return next;
+}
+
+// bit counter (hamming weight)
+// source: http://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
+static int bitcount(int val)
+{
+	val = val - ((val >> 1) & 0x55555555);
+	val = (val & 0x33333333) + ((val >> 2) & 0x33333333);
+	return (((val + (val >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+// integer log2, used to determine highest bit set in a value
+static int ilog2(int val)
+{
+	int res = 0;
+
+	while (val >>= 1)
+		++res;
+
+	return res;
 }
 
 // get current time in microseconds
@@ -145,16 +165,23 @@ static int demo_init_display()
 	
 	// allocate memory for the output RGB texture
 	const int size = the_demo->tex_width * the_demo->tex_height * 3;
-	the_demo->framebuffer = (unsigned char *)malloc(size);
+	the_demo->framebuffer = (uint8_t *)malloc(size);
 	memset(the_demo->framebuffer, 0, size);
 
-	// allocate the emulated VGA memory area (four planes at 64KB each)
+	// allocate the emulated direct access VGA memory area
+	vga_buffer = (uint8_t *)malloc(65536);
+	memset(vga_buffer, 0, 65536);
+
+	// allocate space for all four VGA memory planes
 	for (h = 0; h < 4; h++)
 	{
-		vga_mem[h] = (unsigned char *)malloc(65536);
-		memset(vga_mem[h], 0, 65536);
+		vga_plane[h] = (uint8_t *)malloc(65536);
+		memset(vga_plane[h], 0, 65536);
 	}
 
+	// init some VGA register defaults
+	vga_cur_plane = 0;
+	vga_chain4	  = 0x08;
 	return 0;
 }
 
@@ -213,18 +240,71 @@ static void demo_render_frame()
 {
 	int w, h;
 
-	// for now, determine chained/unchained rendering by checking the video mode
-	if (1) //vga_height == 200)
+	if (vga_chain4)
 	{
 		// mode 13h, convert linear VRAM to 24-bit RGB
-		const char *src = vga_mem[0];
-		for (h = 0; h < 200 /* vga_height */; h++)
+		const uint8_t *src = vga_plane[0];
+		for (h = 0; h < vga_height; h++)
 		{
-			char *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
-			for (w = 0; w < 320 /* vga_width */; w++)
+			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
+			for (w = 0; w < vga_width; w++)
 			{
 				// read color index from VGA
 				const int idx = (*src++) * 3;
+
+				// write RGB colors (scaling up 6 bit to 8 bit)
+				*dest++ = vga_pal[idx    ] << 2;
+				*dest++ = vga_pal[idx + 1] << 2;
+				*dest++ = vga_pal[idx + 2] << 2;
+			}
+		}
+	}
+	else
+	{
+		// mode x, convert four planed VRAM to 24-bit RGB
+		const uint8_t *src0 = vga_plane[0];
+		const uint8_t *src1 = vga_plane[1];
+		const uint8_t *src2 = vga_plane[2];
+		const uint8_t *src3 = vga_plane[3];
+
+		for (h = 0; h < vga_height; h++)
+		{
+			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
+
+//			LOGI("h = %d", h);
+			for (w = 0; w < vga_width; w++)
+			{
+//				LOGI("src0=[%02X],src1=[%02X],src2=[%02X],src3=[%02X]", *src0, *src1, *src2, *src3);
+				
+				// combine VGA planes to obtain color index based on X position
+				int idx;
+				switch (w & 3)
+				{
+					case 0:
+						idx = (*src0 & 0x03) | ((*src1 & 0x03) << 2) | ((*src2 & 0x03) << 4) | ((*src3 & 0x03) << 6);
+						break;
+
+					case 1:
+						idx = ((*src0 & 0x0C) >> 2) | (*src1 & 0x0C) | ((*src2 & 0x0C) << 2) | ((*src3 & 0x0C) << 4);
+						break;
+
+					case 2:
+						idx = ((*src0 & 0x30) >> 4) | ((*src1 & 0x30) >> 2) | (*src2 & 0x30) | ((*src3 & 0x30) << 2);
+						break;
+
+					case 3:
+						idx = ((*src0 & 0xC0) >> 6) | ((*src1 & 0xC0) >> 4) | ((*src2 & 0xC0) >> 2) | (*src3 & 0xC0);
+
+						// advance source pointers
+						src0++;
+						src1++;
+						src2++;
+						src3++;
+						break;
+				}
+
+//				if (idx > 0) LOGI("idx=%d", idx);
+				idx *= 3;
 
 				// write RGB colors (scaling up 6 bit to 8 bit)
 				*dest++ = vga_pal[idx    ] << 2;
@@ -444,7 +524,7 @@ static void *demo_append_asminc(void *data, const char *fname, int *size)
 	if (data == NULL)
 		return NULL;
 
-	memcpy((char *)data + *size, data2, size2);
+	memcpy((uint8_t *)data + *size, data2, size2);
 	free(data2);
 	*size += size2;
 	return data;
@@ -481,16 +561,31 @@ void android_main(struct android_app *state)
 	demo_set_video_mode(320, 200);
 
 	// setup palette: 64 entries each of reds, greens, blues, and greyscale
-	outport(0x3C8, 0);
-	for (t = 0; t < 64; t++) { outport(0x3C9, t); outport(0x3C9, 0); outport(0x3C9, 0); }
-	for (t = 0; t < 64; t++) { outport(0x3C9, 0); outport(0x3C9, t); outport(0x3C9, 0); }
-	for (t = 0; t < 64; t++) { outport(0x3C9, 0); outport(0x3C9, 0); outport(0x3C9, t); }
-	for (t = 0; t < 64; t++) { outport(0x3C9, t); outport(0x3C9, t); outport(0x3C9, t); }
+	outportb(0x3C8, 0);
+	for (t = 0; t < 64; t++) { outportb(0x3C9, t); outportb(0x3C9, 0); outportb(0x3C9, 0); }
+	for (t = 0; t < 64; t++) { outportb(0x3C9, 0); outportb(0x3C9, t); outportb(0x3C9, 0); }
+	for (t = 0; t < 64; t++) { outportb(0x3C9, 0); outportb(0x3C9, 0); outportb(0x3C9, t); }
+	for (t = 0; t < 64; t++) { outportb(0x3C9, t); outportb(0x3C9, t); outportb(0x3C9, t); }
 
 	// draw pixels to the VRAM area
 	char *vmem = MK_FP(0xA000, 0);
 	for (t = 0; t < 320 * 200; t++)
-		*vmem++ = (unsigned char)(t >> 4);
+		*vmem++ = (uint8_t)(t >> 4);
+
+	// show it for 10 seconds
+	while (frame_count < 600 && !dis_exit());
+#elif 0
+	// test modex rendering
+	int t;
+	tw_opengraph();
+
+	// setup palette: just black and white
+	outportb(0x3C8, 0); outportb(0x3C9, 0);    outportb(0x3C9, 0);    outportb(0x3C9, 0);
+	outportb(0x3C8, 1); outportb(0x3C9, 0x3F); outportb(0x3C9, 0x3F); outportb(0x3C9, 0x3F);
+
+	// draw a line from 0,0 to 200,200
+	for (t = 0; t < 200; t++)
+		tw_putpixel(t, t, 1);
 
 	// show it for 10 seconds
 	while (frame_count < 600 && !dis_exit());
@@ -520,16 +615,57 @@ char *MK_FP(int seg, int off)
 {
 	// if segment points to VGA memory, then return a pointer to our emulated VGA buffer instead
 	if (seg == 0xA000)
-		return vga_mem[0] + off;		// FIXME: only plane 0 for now, need to work with outport() and swap buffers
+		return vga_buffer + off;
 
 	// otherwise, return a valid pointer to memory
 	return (char *)((seg << 16) + off);
 }
 
-void outport(unsigned short int port, unsigned short int val)
+void outportb(unsigned short int port, unsigned char val)
 {
 	switch (port)
 	{
+		case 0x3C4:
+			// set vga address register
+			vga_adr_reg = val;
+			break;
+
+		case 0x3C5:
+			// vga data register write, using previously set address
+			switch (vga_adr_reg)
+			{
+				case 0x02:
+					// map mask register (lower 4 bits contain plane write enable flags)
+					{
+						// multiple plane writes currently not supported
+						if (bitcount(val) > 1)
+							LOGI("outportb(0x%03X, %d): VGA plane change to multiple planes", port, val);
+
+						// determine new plane, and check if different
+						const uint8_t new_plane = ilog2(val);
+						if (vga_cur_plane != new_plane)
+						{
+							// swap the current VGA buffer out with the new plane's buffer
+							memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
+							memcpy(vga_buffer, vga_plane[new_plane], 65536);
+
+							// store new plane
+							vga_cur_plane = new_plane;
+						}
+					}
+					break;
+
+				case 0x04:
+					// memory mode register (bit 3 contains chain-4 bit)
+					vga_chain4 = val & 0x08;
+					break;
+
+				default:
+					LOGI("outportb(0x%03X, %d): unhandled VGA address register [%d]", port, val, vga_adr_reg);
+					break;
+			}
+			break;
+
 		case 0x3C8:
 			// set palette color index, starting with red component
 			vga_pal_index = val;
@@ -547,7 +683,17 @@ void outport(unsigned short int port, unsigned short int val)
 				vga_pal_comp = 0;
 			}
 			break;
+
+		default:
+			LOGI("outportb(0x%03X, %d): unhandled port", port, val);
+			break;
 	}
+}
+
+void outport(unsigned short int port, unsigned short int val)
+{
+	outportb(port,     val & 0xFF);
+	outportb(port + 1, val >> 8);
 }
 
 int outline(char *f, char *t)
@@ -589,6 +735,17 @@ int dis_exit()
 	const int now = getUsec();
 	if ((now - last_frame_time) >= 16666)
 	{
+		// copy current VGA buffer to the proper plane
+		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
+
+		// TODO: add support for this
+		if (cop_dofade)
+		{
+			cop_dofade--;
+
+//			do_pal = 1;
+		}
+
 		// handle copper palette updates
 		if (do_pal)
 		{
@@ -601,9 +758,6 @@ int dis_exit()
 
 		// render this frame
 		demo_render_frame();
-
-		// FIXME: just to let part 1 continue...
-		cop_dofade = 0;
 	}
 
 	demo_handle_events();
@@ -622,15 +776,29 @@ int close_copper()
 
 void tw_opengraph()
 {
+	// turn off chain-4
+	outport(0x3C4, 0x0604);
+
 	// set tweaked 640x400 mode
-	demo_set_video_mode(640, 400);
+	demo_set_video_mode(704, 372);
 }
 
 void tw_putpixel(int x, int y, int color)
 {
-//	LOGI("putpixel: x=[%d], y=[%d], col=[%d]", x, y, color);
-	if (y >= 200) return; // for now, so we don't overwrite memory
-	*(vga_mem[0] + (320 * y) + x) = color;
+	// select plane based on X coordinate
+	const int plane = 1 << (x & 3);
+	outport(0x3C4, (plane << 8) | 0x02);
+
+	// calculate offset
+	int offset = x >> 2;
+	y <<= 4; offset += y;
+	y <<= 1; offset += y;
+	y <<= 2; offset += y;
+
+	// write the pixel
+	LOGI("tw_putpixel(%d, %d, %d): offset=[%d]", x, y >> 7, color, offset);
+	char *vga = MK_FP(0xA000, 0x0000);
+	vga[offset] = color;
 }
 
 int tw_getpixel(int x, int y)
@@ -643,8 +811,8 @@ void tw_setpalette(void *pal)
 	uint8_t *ptr = (uint8_t *)pal;
 	int cnt = 768;
 
-	outport(0x3C8, 0);
+	outportb(0x3C8, 0);
 	while (cnt--)
-		outport(0x3C9, *ptr++);
+		outportb(0x3C9, *ptr++);
 }
 
