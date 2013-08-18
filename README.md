@@ -7,8 +7,9 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 ![Running on a Kindle Fire HD](http://falken42.github.com/sr.jpg)
 
-*Running on a Kindle Fire HD*
+*Commit 2e7c444 running on a Kindle Fire HD*
 
+- Mode X/planar VGA emulation is complete.
 - Copper palette emulation (fading in/out) is complete.
 - Support for loading the demo's assets into memory is complete.
 - Mode 13h VGA emulation and palette register sets is complete.
@@ -34,6 +35,14 @@ Another function, outport(), is used to directly access the VGA hardware.  Since
 The demo calls an internal function called dis\_exit() to determine if the ESC key has been pressed and the demo should quit.  This function is called throughout the entire code, and is the main hook used for rendering.  After a simulated VBlank has passed (16.667ms @ 60fps), the current VGA buffers and palette are combined into a frame buffer, uploaded as a texture to OpenGL, and rendered as a fullscreen polygon.
 
 Instead of handling each part as a separate executable, this port will simply compile and statically link all of the parts together and call them directly in the order of the original demo (alleviating a lot of x86 assembly code).
+
+
+Older Screenshots
+=================
+
+![Running on a Kindle Fire HD](http://falken42.github.com/sr.jpg)
+
+*Commit a762b8f running on a Kindle Fire HD, before Mode X support*
 
 
 License
