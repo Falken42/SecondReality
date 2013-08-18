@@ -26,7 +26,7 @@ char *fadepal;
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time;
-static unsigned int vga_width, vga_height;
+static unsigned int vga_width, vga_height, vga_stride;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
 static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_cur_plane, vga_chain4;
 
@@ -185,10 +185,11 @@ static int demo_init_display()
 	return 0;
 }
 
-static void demo_set_video_mode(int width, int height)
+static void demo_set_video_mode(int width, int height, int stride)
 {
 	vga_width  = width;
 	vga_height = height;
+	vga_stride = stride;
 
 	the_demo->texu = vga_width  / (float)the_demo->tex_width;
 	the_demo->texv = vga_height / (float)the_demo->tex_height;
@@ -262,48 +263,27 @@ static void demo_render_frame()
 	else
 	{
 		// mode x, convert four planed VRAM to 24-bit RGB
-		const uint8_t *src0 = vga_plane[0];
-		const uint8_t *src1 = vga_plane[1];
-		const uint8_t *src2 = vga_plane[2];
-		const uint8_t *src3 = vga_plane[3];
-
 		for (h = 0; h < vga_height; h++)
 		{
+			const int row_offset = h * (vga_stride >> 2);
+			const uint8_t *src0 = vga_plane[0] + row_offset;
+			const uint8_t *src1 = vga_plane[1] + row_offset;
+			const uint8_t *src2 = vga_plane[2] + row_offset;
+			const uint8_t *src3 = vga_plane[3] + row_offset;
 			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
 
-//			LOGI("h = %d", h);
 			for (w = 0; w < vga_width; w++)
 			{
-//				LOGI("src0=[%02X],src1=[%02X],src2=[%02X],src3=[%02X]", *src0, *src1, *src2, *src3);
-				
-				// combine VGA planes to obtain color index based on X position
+				// obtain color index based on X position
 				int idx;
 				switch (w & 3)
 				{
-					case 0:
-						idx = (*src0 & 0x03) | ((*src1 & 0x03) << 2) | ((*src2 & 0x03) << 4) | ((*src3 & 0x03) << 6);
-						break;
-
-					case 1:
-						idx = ((*src0 & 0x0C) >> 2) | (*src1 & 0x0C) | ((*src2 & 0x0C) << 2) | ((*src3 & 0x0C) << 4);
-						break;
-
-					case 2:
-						idx = ((*src0 & 0x30) >> 4) | ((*src1 & 0x30) >> 2) | (*src2 & 0x30) | ((*src3 & 0x30) << 2);
-						break;
-
-					case 3:
-						idx = ((*src0 & 0xC0) >> 6) | ((*src1 & 0xC0) >> 4) | ((*src2 & 0xC0) >> 2) | (*src3 & 0xC0);
-
-						// advance source pointers
-						src0++;
-						src1++;
-						src2++;
-						src3++;
-						break;
+					case 0: idx = *src0++; break;
+					case 1: idx = *src1++; break;
+					case 2: idx = *src2++; break;
+					case 3: idx = *src3++; break;
 				}
 
-//				if (idx > 0) LOGI("idx=%d", idx);
 				idx *= 3;
 
 				// write RGB colors (scaling up 6 bit to 8 bit)
@@ -558,7 +538,7 @@ void android_main(struct android_app *state)
 #if 0
 	// test standard mode 13h rendering
 	int t;
-	demo_set_video_mode(320, 200);
+	demo_set_video_mode(320, 200, 320);
 
 	// setup palette: 64 entries each of reds, greens, blues, and greyscale
 	outportb(0x3C8, 0);
@@ -650,6 +630,7 @@ void outportb(unsigned short int port, unsigned char val)
 							memcpy(vga_buffer, vga_plane[new_plane], 65536);
 
 							// store new plane
+//							LOGI("outportb(0x%03X, %d): VGA plane change to plane %d", port, val, new_plane);
 							vga_cur_plane = new_plane;
 						}
 					}
@@ -779,8 +760,8 @@ void tw_opengraph()
 	// turn off chain-4
 	outport(0x3C4, 0x0604);
 
-	// set tweaked 640x400 mode
-	demo_set_video_mode(704, 372);
+	// 320x372 visible, with 704 pixel stride (176*4)
+	demo_set_video_mode(320, 372, 704);
 }
 
 void tw_putpixel(int x, int y, int color)
@@ -796,7 +777,7 @@ void tw_putpixel(int x, int y, int color)
 	y <<= 2; offset += y;
 
 	// write the pixel
-	LOGI("tw_putpixel(%d, %d, %d): offset=[%d]", x, y >> 7, color, offset);
+//	LOGI("tw_putpixel(%d, %d, %d): offset=[%d]", x, y >> 7, color, offset);
 	char *vga = MK_FP(0xA000, 0x0000);
 	vga[offset] = color;
 }
