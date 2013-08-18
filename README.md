@@ -5,7 +5,7 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 **Current status**: The first part of the demo executes, and displays some of the intro text.  No audio is available yet.
 
-![Running on a Kindle Fire HD](http://falken42.github.com/sr.jpg)
+![Running on a Kindle Fire HD](http://falken42.github.com/sr2.jpg)
 
 *Commit 2e7c444 running on a Kindle Fire HD*
 
