@@ -3,11 +3,11 @@ OUYA/Android port of Second Reality
 
 This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
 
-**Current status**: The first part of the demo executes, and displays some of the intro text.  No audio is available yet.
+**Current status**: The first part of the demo executes, and displays the intro text with part of the space landscape in the background.  No audio is available yet.
 
-![Running on a Kindle Fire HD](http://falken42.github.com/sr2.jpg)
+![Running on a Kindle Fire HD](http://falken42.github.com/sr3.jpg)
 
-*Commit 2e7c444 running on a Kindle Fire HD*
+*Commit fec75a6 running on a Kindle Fire HD*
 
 - Mode X/planar VGA emulation is complete.
 - Copper palette emulation (fading in/out) is complete.
@@ -43,6 +43,10 @@ Older Screenshots
 ![Running on a Kindle Fire HD](http://falken42.github.com/sr.jpg)
 
 *Commit a762b8f running on a Kindle Fire HD, before Mode X support*
+
+![Running on a Kindle Fire HD](http://falken42.github.com/sr2.jpg)
+
+*Commit 2e7c444 running on a Kindle Fire HD, with basic Mode X support*
 
 
 License
