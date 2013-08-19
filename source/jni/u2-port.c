@@ -26,9 +26,9 @@ char  fadepal[768*2];
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time;
-static unsigned int vga_width, vga_height, vga_stride;
+static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
-static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_cur_plane, vga_chain4;
+static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
 
 // GL/Android data struct
 struct demo
@@ -180,8 +180,11 @@ static int demo_init_display()
 	}
 
 	// init some VGA register defaults
+	vga_start	  = 0;
 	vga_cur_plane = 0;
 	vga_chain4	  = 0x08;
+	vga_horiz_pan = 0;
+	vga_attr_reg  = 0;
 	return 0;
 }
 
@@ -265,14 +268,22 @@ static void demo_render_frame()
 		// mode x, convert four planed VRAM to 24-bit RGB
 		for (h = 0; h < vga_height; h++)
 		{
-			const int row_offset = h * (vga_stride >> 2);
+			const int row_offset = (h * (vga_stride >> 2)) + vga_start;
 			const uint8_t *src0 = vga_plane[0] + row_offset;
 			const uint8_t *src1 = vga_plane[1] + row_offset;
 			const uint8_t *src2 = vga_plane[2] + row_offset;
 			const uint8_t *src3 = vga_plane[3] + row_offset;
 			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
 
-			for (w = 0; w < vga_width; w++)
+			// advance pointers if horizontal panning is active
+			switch (vga_horiz_pan & 3)
+			{
+				case 3: src2++;
+				case 2: src1++;
+				case 1: src0++;
+			}
+
+			for (w = vga_horiz_pan; w < vga_width + vga_horiz_pan; w++)
 			{
 				// obtain color index based on X position
 				int idx;
@@ -624,6 +635,33 @@ void outportb(unsigned short int port, unsigned char val)
 {
 	switch (port)
 	{
+		case 0x3C0:
+			// vga attribute address/data register
+			if (vga_attr_reg == 0)
+			{
+				// store register index for next iteration
+				vga_attr_reg = val;
+			}
+			else
+			{
+				// only registers 00h-1Fh seem to exist? but U2 references register 33h!
+				switch (vga_attr_reg & 0x1F)
+				{
+					case 0x13:
+						// horizontal pixel panning (not sure why this is scaled by 2 yet)
+						vga_horiz_pan = val >> 1;
+						break;
+
+					default:
+						LOGI("outportb(0x%03X, %d): unhandled VGA attribute register [%d]", port, val, vga_attr_reg);
+						break;
+				}
+
+				// clear register index
+				vga_attr_reg = 0;
+			}
+			break;
+
 		case 0x3C4:
 			// set vga address register
 			vga_adr_reg = val;
@@ -687,6 +725,33 @@ void outportb(unsigned short int port, unsigned char val)
 			}
 			break;
 
+		case 0x3D4:
+			// set vga address register
+			vga_adr_reg = val;
+			break;
+
+		case 0x3D5:
+			// vga data register write, using previously set address
+			switch (vga_adr_reg)
+			{
+				case 0x0C:
+					// start address high
+					vga_start &= 0x00FF;
+					vga_start |= ((int)val) << 8;
+					break;
+
+				case 0x0D:
+					// start address low
+					vga_start &= 0xFF00;
+					vga_start |= val;
+					break;
+
+				default:
+					LOGI("outportb(0x%03X, %d): unhandled VGA address register [%d]", port, val, vga_adr_reg);
+					break;
+			}
+			break;
+
 		default:
 			LOGI("outportb(0x%03X, %d): unhandled port", port, val);
 			break;
@@ -699,6 +764,7 @@ void outport(unsigned short int port, unsigned short int val)
 	outportb(port + 1, val >> 8);
 }
 
+// from alku/asmyt.asm
 void outline(char *src, char *dest)
 {
 	int mrol = 0x08, cnt, ccc;
@@ -719,7 +785,7 @@ void outline(char *src, char *dest)
 			di[ccc * 352 + 176] = al;
 		}
 
-		si += 75*40;
+		si += 75*40 * 16;		// scale by 16 for segment offset
 
 		for (ccc = 0; ccc < 75; ccc++)
 		{
@@ -768,7 +834,13 @@ int dis_exit()
 		// copy current VGA buffer to the proper plane
 		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
 
-		// handle copper fading (func copper3, alku/copper.asm)
+		// handle copper scrolling (func: copper1, alku/copper.asm)
+		outport(0x3D4, ((cop_start & 0x00FF) << 8) | 0x0D);
+		outport(0x3D4,  (cop_start & 0xFF00)       | 0x0C);
+		outportb(0x3C0, 0x33);
+		outportb(0x3C0, cop_scrl);
+
+		// handle copper fading (func: copper3, alku/copper.asm)
 		if (cop_dofade)
 		{
 			cop_dofade--;
@@ -794,7 +866,7 @@ int dis_exit()
 			}
 		}
 
-		// handle copper palette updates (func copper2, alku/copper.asm)
+		// handle copper palette updates (func: copper2, alku/copper.asm)
 		if (do_pal)
 		{
 			tw_setpalette(cop_pal);
@@ -862,7 +934,7 @@ int tw_getpixel(int x, int y)
 //	LOGI("tw_getpixel(%d, %d) = 0x%02X (%d)", x, y >> 7, col, col);
 
 	// FIXME: text fade in breaks on last frame when returing proper color
-	return 0; //col;
+	return col;
 }
 
 void tw_setpalette(void *pal)
