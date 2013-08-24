@@ -12,6 +12,7 @@
 #include "u2-port.h"
 
 // Second Reality externed variables
+// part 1: alku
 char  hzpic[65535 + 63250];		// sizes calced from parsed .inc data
 char  font[32][1500];			// incremented to 32 to handle out-of-bounds access in alku
 int   frame_count;
@@ -22,6 +23,9 @@ int   cop_scrl;
 int   cop_dofade;
 char *cop_fadepal;
 char  fadepal[768*2];
+
+// part2: beg
+char  pic[44575];				// size of srtitle.up
 
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
@@ -133,9 +137,9 @@ static int demo_init_display()
 	the_demo->disp_width  = w;
 	the_demo->disp_height = h;
 	
-	// use a fixed size of 1024x1024 for the frame buffer texture
-	the_demo->tex_width  = 1024;
-	the_demo->tex_height = 1024;
+	// use a fixed size of 512x512 for the frame buffer texture
+	the_demo->tex_width  = 512;
+	the_demo->tex_height = 512;
 	LOGI("texture: width=%d, height=%d", the_demo->tex_width, the_demo->tex_height);
 
 	the_demo->display = display;
@@ -180,11 +184,8 @@ static int demo_init_display()
 	}
 
 	// init some VGA register defaults
-	vga_start	  = 0;
-	vga_cur_plane = 0;
-	vga_chain4	  = 0x08;
-	vga_horiz_pan = 0;
-	vga_attr_reg  = 0;
+	vga_chain4	 = 0x08;
+	vga_attr_reg = 0;
 	return 0;
 }
 
@@ -193,6 +194,10 @@ static void demo_set_video_mode(int width, int height, int stride)
 	vga_width  = width;
 	vga_height = height;
 	vga_stride = stride;
+
+	vga_start	  = 0;
+	vga_cur_plane = 0;
+	vga_horiz_pan = 0;
 
 	the_demo->texu = vga_width  / (float)the_demo->tex_width;
 	the_demo->texv = vga_height / (float)the_demo->tex_height;
@@ -594,8 +599,18 @@ void android_main(struct android_app *state)
 	memcpy(hzpic, tmp, size);
 	free(tmp);
 
+	tmp = demo_load_asset("srtitle.up");
+	memcpy(pic, tmp, sizeof(pic));
+	free(tmp);
+
 	// execute each part
 	alku_main();
+
+	// HACK: until we can properly determine the resolution from the VGA registers
+    tw_opengraph();
+	demo_set_video_mode(320, 400, 320);
+
+	beg_main();
 #endif
 
 	// end ourselves
@@ -758,10 +773,26 @@ void outportb(unsigned short int port, unsigned char val)
 	}
 }
 
+void outp(unsigned short int port, unsigned char val)
+{
+	outportb(port, val);
+}
+
 void outport(unsigned short int port, unsigned short int val)
 {
 	outportb(port,     val & 0xFF);
 	outportb(port + 1, val >> 8);
+}
+
+unsigned char inportb(unsigned short int port)
+{
+	// TODO
+	return 0;
+}
+
+unsigned char inp(unsigned short int port)
+{
+	return inportb(port);
 }
 
 // from alku/asmyt.asm
@@ -798,13 +829,52 @@ void outline(char *src, char *dest)
 	}
 }
 
+// from alku/asmyt.asm
 void ascrolltext(int scrl, int *text)
 {
+}
+
+// from beg/asm.asm
+void lineblit(char *buf, char *row)
+{
+	int zpl, zzz;
+
+	for (zpl = 0; zpl < 4; zpl++)
+	{
+		outport(0x3C4, 0x02 + (0x100 << zpl));
+
+		for (zzz = 0; zzz < 80; zzz += 2)
+		{
+			const uint8_t al = *(row + (zzz+0) * 4 + zpl);
+			const uint8_t ah = *(row + (zzz+1) * 4 + zpl);
+			*((uint16_t *)(buf + zzz)) = ((int)ah << 8) | al;
+		}
+	}
+}
+
+// from beg/asm.asm
+void setpalarea(char *pal, int start, int cnt)
+{
+	outportb(0x3C8, start);
+	cnt = (cnt << 1) + cnt;
+	while (cnt--)
+		outportb(0x3C9, *pal++);
 }
 
 void dis_partstart()
 {
 	LOGI("---------- starting next part ----------");
+	do_pal	   = 0;
+	cop_start  = 0;
+	cop_scrl   = 0;
+	cop_dofade = 0;
+}
+
+void dis_waitb()
+{
+	// wait for vblank
+	frame_count = 0;
+	while (frame_count < 1 && !dis_exit());
 }
 
 int dis_sync()
@@ -932,8 +1002,6 @@ int tw_getpixel(int x, int y)
 	// read the pixel
 	const int col = *(MK_FP(0xA000, offset));
 //	LOGI("tw_getpixel(%d, %d) = 0x%02X (%d)", x, y >> 7, col, col);
-
-	// FIXME: text fade in breaks on last frame when returing proper color
 	return col;
 }
 

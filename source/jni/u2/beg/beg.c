@@ -1,18 +1,16 @@
-#include <stdio.h>
-#include "..\dis\dis.h"
+#include "../../u2-port.h"
 
 #include "readp.c"
 
 extern char pic[];
 
-char *vram=(char *)0xa0000000L;
-
 char	pal2[768];
 char	palette[768];
 char	rowbuf[640];
 
-main()
+beg_main()
 {
+    char    far *vram=MK_FP(0x0a000,0);
 	int	a,b,c,y;
 	dis_partstart();
 	outp(0x3c4,2);
@@ -37,38 +35,21 @@ main()
 	outp(0x3c0,255);
 	outp(0x3c0,0x20);
 	//inittwk();
-	_asm
-	{
-		mov	dx,3d4h
-		mov	ax,000ch
-		out	dx,ax
-		mov	ax,000dh
-		out	dx,ax
-		mov	al,9
-		out	dx,al
-		inc	dx
-		in	al,dx
-		and	al,not 80h
-		and	al,not 31
-		out	dx,al
-		mov	dx,3c0h
-		mov	al,11h
-		out	dx,al
-		mov	al,0
-		out	dx,al
-		mov	al,32
-		out	dx,al
-	}
-	_asm
-	{
-		mov	dx,3c0h
-		mov	al,11h
-		out	dx,al
-		mov	al,255
-		out	dx,al
-		mov	al,20h
-		out	dx,al
-	}
+
+	outport(0x3D4, 0x000C);
+	outport(0x3D4, 0x000D);
+	outp(0x3D4, 9);
+	unsigned char al = inp(0x3D5);
+	al &= ~0x80;
+	al &= ~31;
+	outp(0x3D5, al);
+	outp(0x3C0, 0x11);
+	outp(0x3C0, 0);
+	outp(0x3C0, 32);
+
+	outp(0x3C0, 0x11);
+	outp(0x3C0, 255);
+	outp(0x3C0, 0x20);
 
 	readp(palette,-1,pic);
 	for(y=0;y<400;y++)
