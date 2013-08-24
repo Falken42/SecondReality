@@ -3,19 +3,15 @@ OUYA/Android port of Second Reality
 
 This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
 
-**Current status**: The first part of the demo executes, and displays the intro text with the space landscape scrolling in the background.  No audio is available yet.
+**Current status**:
 
-![Running on a Kindle Fire HD](http://falken42.github.com/sr4.jpg)
+- Part 1 (alku): Renders and executes fully.  Bugs: Text does not scroll yet (needs ascrolltext() function implemented), and the spaceships/explosion effect is skipped.
+- Part 2 (beg): Renders and executes fully.  Bugs: Slight graphic distortion before the title screen fades in.
+- No audio playback code has been written yet.
 
-*Commit 52a9fac running on a Kindle Fire HD*
+![Running on a Kindle Fire HD](http://falken42.github.com/sr5.jpg)
 
-- VGA hardware scrolling emulation is mostly complete.
-- Mode X/planar VGA emulation is complete.
-- Copper palette emulation (fading in/out) is complete.
-- Support for loading the demo's assets into memory is complete.
-- Mode 13h VGA emulation and palette register sets is complete.
-- First part (alku) compiles and fully executes to completion.
-- The build system and the GL rendering backend is complete.
+*Commit c8da9a9 running on a Kindle Fire HD*
 
 To build, clone the repository and run 'make' in the source folder.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
 
@@ -51,7 +47,11 @@ Older Screenshots
 
 ![Running on a Kindle Fire HD](http://falken42.github.com/sr3.jpg)
 
-*Commit fec75a6 running on a Kindle Fire HD, with improved VGA support*
+*Commit fec75a6 running on a Kindle Fire HD, with improved VGA support and scrolling*
+
+![Running on a Kindle Fire HD](http://falken42.github.com/sr4.jpg)
+
+*Commit 52a9fac running on a Kindle Fire HD, with various bug fixes*
 
 
 License
