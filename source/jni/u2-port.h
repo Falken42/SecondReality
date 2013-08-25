@@ -23,7 +23,8 @@ extern int  dis_exit();
 extern void tw_opengraph();
 extern void tw_putpixel(int x, int y, int color);
 extern int  tw_getpixel(int x, int y);
-extern void tw_setpalette(void *pal);
+extern void tw_setpalette(char *pal);
+extern void tw_setstart(int s);
 
 #endif // U2_PORT
 

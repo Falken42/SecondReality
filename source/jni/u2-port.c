@@ -24,7 +24,11 @@ int   cop_dofade;
 char *cop_fadepal;
 char  fadepal[768*2];
 
-// part2: beg
+// part3: pam
+char  pal[769 + (768 * 64)];			// size from pal.inc plus 768*64 buffer in pam/include.asm
+char  memblock[(65535 * 4) + 62486];	// sizes calced from parsed out.in[0-4] data
+
+// part4: beg
 char  pic[44575];				// size of srtitle.up
 
 // internal variables (for timing, vga emulation, etc)
@@ -184,8 +188,11 @@ static int demo_init_display()
 	}
 
 	// init some VGA register defaults
-	vga_chain4	 = 0x08;
-	vga_attr_reg = 0;
+	vga_chain4	  = 0x08;
+	vga_attr_reg  = 0;
+	vga_start	  = 0;
+	vga_cur_plane = 0;
+	vga_horiz_pan = 0;
 	return 0;
 }
 
@@ -194,10 +201,6 @@ static void demo_set_video_mode(int width, int height, int stride)
 	vga_width  = width;
 	vga_height = height;
 	vga_stride = stride;
-
-	vga_start	  = 0;
-	vga_cur_plane = 0;
-	vga_horiz_pan = 0;
 
 	the_demo->texu = vga_width  / (float)the_demo->tex_width;
 	the_demo->texv = vga_height / (float)the_demo->tex_height;
@@ -530,6 +533,8 @@ static void *demo_append_asminc(void *data, const char *fname, int *size)
 void android_main(struct android_app *state)
 {
 	struct demo demo;
+	int size;
+	void *tmp;
 
 	// make sure glue isn't stripped
 	app_dummy();
@@ -551,45 +556,8 @@ void android_main(struct android_app *state)
 	dis_sync_val    = 0;
 	dis_sync_time   = last_frame_time;
 
-#if 0
-	// test standard mode 13h rendering
-	int t;
-	demo_set_video_mode(320, 200, 320);
-
-	// setup palette: 64 entries each of reds, greens, blues, and greyscale
-	outportb(0x3C8, 0);
-	for (t = 0; t < 64; t++) { outportb(0x3C9, t); outportb(0x3C9, 0); outportb(0x3C9, 0); }
-	for (t = 0; t < 64; t++) { outportb(0x3C9, 0); outportb(0x3C9, t); outportb(0x3C9, 0); }
-	for (t = 0; t < 64; t++) { outportb(0x3C9, 0); outportb(0x3C9, 0); outportb(0x3C9, t); }
-	for (t = 0; t < 64; t++) { outportb(0x3C9, t); outportb(0x3C9, t); outportb(0x3C9, t); }
-
-	// draw pixels to the VRAM area
-	char *vmem = MK_FP(0xA000, 0);
-	for (t = 0; t < 320 * 200; t++)
-		*vmem++ = (uint8_t)(t >> 4);
-
-	// show it for 10 seconds
-	while (frame_count < 600 && !dis_exit());
-#elif 0
-	// test modex rendering
-	int t;
-	tw_opengraph();
-
-	// setup palette: just black and white
-	outportb(0x3C8, 0); outportb(0x3C9, 0);    outportb(0x3C9, 0);    outportb(0x3C9, 0);
-	outportb(0x3C8, 1); outportb(0x3C9, 0x3F); outportb(0x3C9, 0x3F); outportb(0x3C9, 0x3F);
-
-	// draw a line from 0,0 to 200,200
-	for (t = 0; t < 200; t++)
-		tw_putpixel(t, t, 1);
-
-	// show it for 10 seconds
-	while (frame_count < 600 && !dis_exit());
-#else
-	int size;
-	void *tmp;
-
 	// load assets
+	// part 1: alku
 	tmp = demo_load_asminc("fona.inc");
 	memcpy(font, tmp, sizeof(font));
 	free(tmp);
@@ -599,6 +567,20 @@ void android_main(struct android_app *state)
 	memcpy(hzpic, tmp, size);
 	free(tmp);
 
+	// part 3: pam
+	tmp = demo_load_asmincsz("out.in0", &size);
+	tmp = demo_append_asminc(tmp, "out.in1", &size);
+	tmp = demo_append_asminc(tmp, "out.in2", &size);
+	tmp = demo_append_asminc(tmp, "out.in3", &size);
+	tmp = demo_append_asminc(tmp, "out.in4", &size);
+	memcpy(memblock, tmp, size);
+	free(tmp);
+
+	tmp = demo_load_asmincsz("pal.inc", &size);
+	memcpy(pal, tmp, size);
+	free(tmp);
+
+	// part 4: beg
 	tmp = demo_load_asset("srtitle.up");
 	memcpy(pic, tmp, sizeof(pic));
 	free(tmp);
@@ -606,12 +588,16 @@ void android_main(struct android_app *state)
 	// execute each part
 	alku_main();
 
+	pam_main();
+
 	// HACK: until we can properly determine the resolution from the VGA registers
     tw_opengraph();
 	demo_set_video_mode(320, 400, 320);
+	cop_start  = 0;		// <-- this is a hack too. beg_main() probably initializes these on the VGA though.
+	cop_scrl   = 0;
+	cop_dofade = 0;
 
 	beg_main();
-#endif
 
 	// end ourselves
 	exit(0);
@@ -864,10 +850,6 @@ void setpalarea(char *pal, int start, int cnt)
 void dis_partstart()
 {
 	LOGI("---------- starting next part ----------");
-	do_pal	   = 0;
-	cop_start  = 0;
-	cop_scrl   = 0;
-	cop_dofade = 0;
 }
 
 void dis_waitb()
@@ -905,8 +887,7 @@ int dis_exit()
 		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
 
 		// handle copper scrolling (func: copper1, alku/copper.asm)
-		outport(0x3D4, ((cop_start & 0x00FF) << 8) | 0x0D);
-		outport(0x3D4,  (cop_start & 0xFF00)       | 0x0C);
+		tw_setstart(cop_start);
 		outportb(0x3C0, 0x33);
 		outportb(0x3C0, cop_scrl);
 
@@ -1005,7 +986,7 @@ int tw_getpixel(int x, int y)
 	return col;
 }
 
-void tw_setpalette(void *pal)
+void tw_setpalette(char *pal)
 {
 	uint8_t *ptr = (uint8_t *)pal;
 	int cnt = 768;
@@ -1013,5 +994,27 @@ void tw_setpalette(void *pal)
 	outportb(0x3C8, 0);
 	while (cnt--)
 		outportb(0x3C9, *ptr++);
+}
+
+void tw_setstart(int s)
+{
+	outport(0x3D4, ((s & 0x00FF) << 8) | 0x0D);
+	outport(0x3D4,  (s & 0xFF00)       | 0x0C);
+}
+
+void tw_waitvr()
+{
+	// TODO: is this timing sufficient?
+	dis_waitb();
+}
+
+// from pam/asmyt.asm
+void init_uframe(int seg)
+{
+}
+
+// from pam/asmyt.asm
+void ulosta_frame(int start)
+{
 }
 

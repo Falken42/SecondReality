@@ -1,6 +1,4 @@
-#include <conio.h>
-#include <dos.h>
-#include "..\dis\dis.h"
+#include "../../u2-port.h"
 #pragma	 inline
 
 extern void tw_opengraph();
@@ -25,7 +23,7 @@ int	wfade[100]=    {63,32,16,8,4,2,1,0,0,0,
 			1,2,4,6,9,14,20,28,37,46,
 			56,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63};
 
-main()
+pam_main()
 	{
 	int	a,f=0,p=0,frames;
 	unsigned  m=65535,b,segp;
@@ -45,7 +43,7 @@ main()
 	frame_count=0;
 	while(!dis_exit() && f++<45)
 		{
-		while(frame_count<4); frame_count=0;
+		while(frame_count<4 && !dis_exit()); frame_count=0;
 		if(f<=40)
 			{
 			if(p)   {
