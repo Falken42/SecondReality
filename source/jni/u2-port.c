@@ -1,14 +1,4 @@
-#include <jni.h>
 #include <stdio.h>
-#include <errno.h>
-#include <sys/time.h>
-
-#include <EGL/egl.h>
-#include <GLES/gl.h>
-
-#include <android_native_app_glue.h>
-#include <android/asset_manager.h>
-
 #include "u2-port.h"
 
 // Second Reality externed variables
@@ -37,24 +27,6 @@ static int dis_sync_val, dis_sync_time;
 static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
 static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
-
-// GL/Android data struct
-struct demo
-{
-	struct android_app *app;
-	EGLDisplay display;
-	EGLSurface surface;
-	EGLContext context;
-	volatile int initialized, exitflag;
-	int disp_width, disp_height;
-	int tex_width, tex_height;
-	uint8_t *framebuffer;
-	float texu, texv;
-	GLuint texid;
-};
-
-static AAssetManager *android_asset_manager;
-static struct demo *the_demo = NULL;
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -87,104 +59,19 @@ static int ilog2(int val)
 	return res;
 }
 
-// get current time in microseconds
-static int getUsec()
+static void demo_init()
 {
-	struct timeval t;
-	gettimeofday(&t, NULL);
-	return (t.tv_sec * 1000000) + t.tv_usec;
-}
-
-static int getUsecDiff(int time)
-{
-	return getUsec() - time;
-}
-
-// initialize an EGL context for the current display
-static int demo_init_display()
-{
-	// initialize OpenGL ES and EGL
-	const EGLint attribs[] = {
-		EGL_SURFACE_TYPE,	EGL_WINDOW_BIT,
-		EGL_BLUE_SIZE,		8,
-		EGL_GREEN_SIZE,		8,
-		EGL_RED_SIZE,		8,
-		EGL_NONE
-	};
-
-	EGLint w, h, dummy, format;
-	EGLint numConfigs;
-	EGLConfig config;
-	EGLSurface surface;
-	EGLContext context;
-
-	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-	eglInitialize(display, 0, 0);
-
-	// pick the first EGLConfig that matches our criteria
-	eglChooseConfig(display, attribs, &config, 1, &numConfigs);
-	eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &format);
-	ANativeWindow_setBuffersGeometry(the_demo->app->window, 0, 0, format);
-
-	surface = eglCreateWindowSurface(display, config, the_demo->app->window, NULL);
-	context = eglCreateContext(display, config, NULL, NULL);
-
-	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
-	{
-		LOGW("Unable to eglMakeCurrent");
-		return -1;
-	}
-
-	eglQuerySurface(display, surface, EGL_WIDTH, &w);
-	eglQuerySurface(display, surface, EGL_HEIGHT, &h);
-	LOGI("display: width=%d, height=%d", w, h);
-	the_demo->disp_width  = w;
-	the_demo->disp_height = h;
-	
-	// use a fixed size of 512x512 for the frame buffer texture
-	the_demo->tex_width  = 512;
-	the_demo->tex_height = 512;
-	LOGI("texture: width=%d, height=%d", the_demo->tex_width, the_demo->tex_height);
-
-	the_demo->display = display;
-	the_demo->context = context;
-	the_demo->surface = surface;
-
-	// initialize GL state
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-	glEnable(GL_CULL_FACE);
-	glShadeModel(GL_SMOOTH);
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
-	
-	// set orthographic projection and view matrices to use fullscreen pixel coordinates
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrthof(0.0, w, h, 0.0, -1.0, 1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	// generate and initialize a texture to display the rendered frame
-	glGenTextures(1, &the_demo->texid);
-	glBindTexture(GL_TEXTURE_2D, the_demo->texid);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, the_demo->tex_width, the_demo->tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	
-	// allocate memory for the output RGB texture
-	const int size = the_demo->tex_width * the_demo->tex_height * 3;
-	the_demo->framebuffer = (uint8_t *)malloc(size);
-	memset(the_demo->framebuffer, 0, size);
+	int t;
 
 	// allocate the emulated direct access VGA memory area
 	vga_buffer = (uint8_t *)malloc(65536);
 	memset(vga_buffer, 0, 65536);
 
 	// allocate space for all four VGA memory planes
-	for (h = 0; h < 4; h++)
+	for (t = 0; t < 4; t++)
 	{
-		vga_plane[h] = (uint8_t *)malloc(65536);
-		memset(vga_plane[h], 0, 65536);
+		vga_plane[t] = (uint8_t *)malloc(65536);
+		memset(vga_plane[t], 0, 65536);
 	}
 
 	// init some VGA register defaults
@@ -193,7 +80,12 @@ static int demo_init_display()
 	vga_start	  = 0;
 	vga_cur_plane = 0;
 	vga_horiz_pan = 0;
-	return 0;
+
+	// initialize demo state
+	frame_count     = 0;
+	last_frame_time = platform_get_usec();
+	dis_sync_val    = 0;
+	dis_sync_time   = last_frame_time;
 }
 
 static void demo_set_video_mode(int width, int height, int stride)
@@ -202,55 +94,14 @@ static void demo_set_video_mode(int width, int height, int stride)
 	vga_height = height;
 	vga_stride = stride;
 
-	the_demo->texu = vga_width  / (float)the_demo->tex_width;
-	the_demo->texv = vga_height / (float)the_demo->tex_height;
-	LOGI("render: width=%d, height=%d", vga_width, vga_height);
-}
-
-// show the current framebuffer on the display
-static void demo_draw_frame()
-{
-	const GLfloat verts[] = {
-		the_demo->disp_width,	0.0f,
-		0.0f,					0.0f,
-		the_demo->disp_width,	the_demo->disp_height,
-		0.0f,					the_demo->disp_height
-	};
-	
-	const GLfloat texcoords[] = {
-		the_demo->texu,			0.0f,
-		0.0f,					0.0f,
-		the_demo->texu,			the_demo->texv,
-		0.0f,					the_demo->texv
-	};
-	
-	if (the_demo->display == NULL)
-		return;
-
-	// clear the display to black
-	glClearColor(0.0f, 0.0f, 0.0f, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	// update the GL texture (optimize the texture upload by only sending up to the visible height)
-	glBindTexture(GL_TEXTURE_2D, the_demo->texid);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, the_demo->tex_width, vga_height, GL_RGB, GL_UNSIGNED_BYTE, the_demo->framebuffer);
-
-	// setup rendering
-	glVertexPointer(2, GL_FLOAT, 0, verts);
-	glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	// render the polygon
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	
-	// and show the rendered surface to the display
-	eglSwapBuffers(the_demo->display, the_demo->surface);
+	platform_set_video_mode(width, height, stride);
 }
 
 static void demo_render_frame()
 {
 	int w, h;
+	uint8_t *fb = platform_lock_framebuffer();
+	const int stride = platform_get_framebuffer_stride();
 
 	if (vga_chain4)
 	{
@@ -258,7 +109,7 @@ static void demo_render_frame()
 		const uint8_t *src = vga_plane[0];
 		for (h = 0; h < vga_height; h++)
 		{
-			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
+			uint8_t *dest = fb + (h * stride * 3);
 			for (w = 0; w < vga_width; w++)
 			{
 				// read color index from VGA
@@ -281,7 +132,7 @@ static void demo_render_frame()
 			const uint8_t *src1 = vga_plane[1] + row_offset;
 			const uint8_t *src2 = vga_plane[2] + row_offset;
 			const uint8_t *src3 = vga_plane[3] + row_offset;
-			uint8_t *dest = the_demo->framebuffer + (h * the_demo->tex_width * 3);
+			uint8_t *dest = fb + (h * stride * 3);
 
 			// advance pointers if horizontal panning is active
 			switch (vga_horiz_pan & 3)
@@ -314,120 +165,13 @@ static void demo_render_frame()
 	}
 
 	// show the new frame buffer
-	demo_draw_frame();
-}
-
-// tear down the EGL context currently associated with the display
-static void demo_term_display()
-{
-	if (the_demo->display != EGL_NO_DISPLAY)
-	{
-		eglMakeCurrent(the_demo->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-
-		if (the_demo->context != EGL_NO_CONTEXT)
-			eglDestroyContext(the_demo->display, the_demo->context);
-
-		if (the_demo->surface != EGL_NO_SURFACE)
-			eglDestroySurface(the_demo->display, the_demo->surface);
-
-		eglTerminate(the_demo->display);
-	}
-
-	the_demo->display  = EGL_NO_DISPLAY;
-	the_demo->context  = EGL_NO_CONTEXT;
-	the_demo->surface  = EGL_NO_SURFACE;
-	the_demo->exitflag = 1;
-}
-
-// process the next main command
-static void demo_handle_cmd(struct android_app *app, int32_t cmd)
-{
-    struct demo *demo = (struct demo *)app->userData;
-
-	switch (cmd)
-	{
-		case APP_CMD_INIT_WINDOW:
-			// the window is being shown, so initialize it
-			if (demo->app->window != NULL)
-			{
-				demo_init_display();
-				demo_draw_frame();
-				demo->initialized = 1;
-			}
-			break;
-
-		case APP_CMD_TERM_WINDOW:
-			// the window is being hidden or closed, clean it up
-			demo_term_display();
-			break;
-
-		case APP_CMD_LOST_FOCUS:
-			// our app lost focus, quit the demo
-			demo->exitflag = 1;
-			break;
-	}
-}
-
-static void demo_handle_events()
-{
-	int ident, events;
-	struct android_poll_source *source;
-
-	// read and process all pending events
-	while ((ident = ALooper_pollAll(0, NULL, &events, (void **)&source)) >= 0)
-	{
-		struct android_app *state = the_demo->app;
-
-		// process this event
-		if (source != NULL)
-			source->process(state, source);
-
-		// check if we are exiting
-		if (state->destroyRequested != 0)
-		{
-			demo_term_display();
-			return;
-		}
-	}
-}
-
-// android asset fopen technique from: http://www.50ply.com/blog/2013/01/19/loading-compressed-android-assets-with-file-pointer/
-static int android_fread(void *cookie, char *buf, int size)
-{
-	return AAsset_read((AAsset *)cookie, buf, size);
-}
-
-static int android_fwrite(void *cookie, const char *buf, int size)
-{
-	return EACCES;
-}
-
-static fpos_t android_fseek(void *cookie, fpos_t offset, int whence)
-{
-	return AAsset_seek((AAsset *)cookie, offset, whence);
-}
-
-static int android_fclose(void *cookie)
-{
-	AAsset_close((AAsset *)cookie);
-	return 0;
-}
-
-static FILE *android_fopen(const char *fname, const char *mode)
-{
-	if (mode[0] == 'w')
-		return NULL;
-
-	AAsset *asset = AAssetManager_open(android_asset_manager, fname, 0);
-	if (!asset)
-		return NULL;
-
-	return funopen(asset, android_fread, android_fwrite, android_fseek, android_fclose);
+	platform_unlock_framebuffer(fb);
+	platform_draw_frame();
 }
 
 static void *demo_load_assetsz(const char *fname, int *size)
 {
-	FILE *fp = android_fopen(fname, "rb");
+	PFILE *fp = platform_fopen(fname, "rb");
 	if (fp == NULL)
 	{
 		LOGW("load_asset: failed to open [%s]!", fname);
@@ -435,15 +179,15 @@ static void *demo_load_assetsz(const char *fname, int *size)
 	}
 
 	// get size of asset
-	fseek(fp, 0, SEEK_END);
-	*size = ftell(fp);
-	rewind(fp);
+	platform_fseek(fp, 0, SEEK_END);
+	*size = platform_ftell(fp);
+	platform_fseek(fp, 0, SEEK_SET);
 
 	// allocate memory and load
 	LOGI("load_asset: loading [%s] (%d bytes)...", fname, *size);
 	void *res = malloc(*size);
-	fread(res, 1, *size, fp);
-	fclose(fp);
+	platform_fread(res, 1, *size, fp);
+	platform_fclose(fp);
 	return res;
 }
 
@@ -529,32 +273,13 @@ static void *demo_append_asminc(void *data, const char *fname, int *size)
 	return data;
 }
 
-// the main entry point of a native application that uses android_native_app_glue.  it runs in its own thread, with its own event loop for receiving input events.
-void android_main(struct android_app *state)
+void demo_execute()
 {
-	struct demo demo;
 	int size;
 	void *tmp;
 
-	// make sure glue isn't stripped
-	app_dummy();
-
-	memset(&demo, 0, sizeof(demo));
-	state->userData = &demo;
-	state->onAppCmd = demo_handle_cmd;
-	android_asset_manager = state->activity->assetManager;
-	demo.app = state;
-	the_demo = &demo;
-
-	// handle events until the window is initialized
-	while (!the_demo->initialized)
-		demo_handle_events();
-
 	// initialize internal state
-	frame_count     = 0;
-	last_frame_time = getUsec();
-	dis_sync_val    = 0;
-	dis_sync_time   = last_frame_time;
+	demo_init();
 
 	// load assets
 	// part 1: alku
@@ -598,9 +323,6 @@ void android_main(struct android_app *state)
 	cop_dofade = 0;
 
 	beg_main();
-
-	// end ourselves
-	exit(0);
 }
 
 char *MK_FP(int seg, int off)
@@ -864,7 +586,7 @@ int dis_sync()
 //	LOGI("dis_sync = %d", dis_sync_val);
 
 	// COMPLETE HACK (for now): increment sync every 7.5 seconds
-	const int now = getUsec();
+	const int now = platform_get_usec();
 	if ((now - dis_sync_time) >= (7500 * 1000))
 	{
 		dis_sync_val++;
@@ -879,9 +601,9 @@ int dis_exit()
 {
 //	LOGI("dis_exit: frame_count = %d", frame_count);
 
-	// render a frame every 16.666 msec (60Hz vblank)
-	const int now = getUsec();
-	if ((now - last_frame_time) >= 16666)
+	// render a frame every 16.667 msec (60Hz vblank)
+	const int now = platform_get_usec();
+	if ((now - last_frame_time) >= 16667)
 	{
 		// copy current VGA buffer to the proper plane
 		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
@@ -931,8 +653,7 @@ int dis_exit()
 		demo_render_frame();
 	}
 
-	demo_handle_events();
-	return the_demo->exitflag;
+	return platform_handle_events();
 }
 
 void init_copper()

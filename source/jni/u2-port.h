@@ -1,11 +1,7 @@
 #ifndef U2_PORT
 #define U2_PORT
 
-#include <stdlib.h>
-#include <android/log.h>
-
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "SecondReality", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "SecondReality", __VA_ARGS__))
+#include "platform.h"
 
 // eliminate far keyword
 #define far
