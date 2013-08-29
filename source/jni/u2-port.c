@@ -185,7 +185,7 @@ static void *demo_load_assetsz(const char *fname, int *size)
 
 	// allocate memory and load
 	LOGI("load_asset: loading [%s] (%d bytes)...", fname, *size);
-	void *res = malloc(*size);
+	void *res = malloc(*size + 1); // +1 since demo_load_asmincsz() puts a \0 char at the end during tokenizing
 	platform_fread(res, 1, *size, fp);
 	platform_fclose(fp);
 	return res;
