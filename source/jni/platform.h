@@ -4,22 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define LOGI(...)	platform_log('I', "SecondReality", __VA_ARGS__)
+#define LOGW(...)	platform_log('W', "SecondReality", __VA_ARGS__)
+
 #ifdef ANDROID
- #include <android/log.h>
- #define LOGI(...)	((void)__android_log_print(ANDROID_LOG_INFO, "SecondReality", __VA_ARGS__))
- #define LOGW(...)	((void)__android_log_print(ANDROID_LOG_WARN, "SecondReality", __VA_ARGS__))
  typedef FILE		PFILE;
 #else
  #include <stdint.h> /* for uint8_t */
- void	platform_log_info(const char *tag, const char *fmt, ...);
- void	platform_log_warn(const char *tag, const char *fmt, ...);
- #define LOGI(...)	platform_log_info("SecondReality", __VA_ARGS__)
- #define LOGW(...)	platform_log_warn("SecondReality", __VA_ARGS__)
  typedef FILE		PFILE;
 #endif
 
 extern void demo_execute();
 
+void	platform_log(char level, const char *tag, const char *fmt, ...);
 int		platform_get_usec();
 
 void	platform_set_video_mode(int width, int height, int stride);

@@ -8,6 +8,7 @@
 
 #include <android_native_app_glue.h>
 #include <android/asset_manager.h>
+#include <android/log.h>
 
 #include "platform.h"
 
@@ -29,6 +30,16 @@ struct demo
 
 static AAssetManager *android_asset_manager;
 static struct demo *the_demo = NULL;
+
+void platform_log(char level, const char *tag, const char *fmt, ...)
+{
+	char buf[256];
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, args);
+	__android_log_print(level == 'I' ? ANDROID_LOG_INFO : ANDROID_LOG_WARN, tag, "%s", buf);
+	va_end(args);
+}
 
 int platform_get_usec()
 {

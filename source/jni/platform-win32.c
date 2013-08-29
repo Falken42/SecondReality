@@ -25,19 +25,11 @@ static void logv(char pri, const char *tag, const char *fmt, va_list args)
 	OutputDebugStringA(b);
 }
 
-void platform_log_info(const char *tag, const char *fmt, ...)
+void platform_log(char level, const char *tag, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	logv('W', tag, fmt, args);
-	va_end(args);
-}
-
-void platform_log_warn(const char *tag, const char *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	logv('I', tag, fmt, args);
+	logv(level, tag, fmt, args);
 	va_end(args);
 }
 
