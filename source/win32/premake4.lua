@@ -14,6 +14,7 @@ solution "u2"
 		targetdir "../assets"
 		buildoptions {
 			"-fno-color-diagnostics",
+			"-funsigned-char",
 			"-Wno-unused-value"
 		}
 		configuration "debug"
