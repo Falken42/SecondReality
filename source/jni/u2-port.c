@@ -283,8 +283,8 @@ void demo_execute()
 
 	// load assets
 	// part 1: alku
-	tmp = demo_load_asminc("fona.inc");
-	memcpy(font, tmp, sizeof(font));
+	tmp = demo_load_asmincsz("fona.inc", &size);
+	memcpy(font, tmp, size);
 	free(tmp);
 
 	tmp = demo_load_asmincsz("hoi.in0", &size);
