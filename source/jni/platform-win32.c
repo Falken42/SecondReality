@@ -17,20 +17,15 @@ struct Me
 
 static struct Me me;
 
-static void logv(char pri, const char *tag, const char *fmt, va_list args)
-{
-	char a[256], b[256];
-	vsprintf_s(a, sizeof(a), fmt, args);
-	sprintf_s(b, sizeof(b), "[%c][%s]%s\n", pri, tag, a);
-	OutputDebugStringA(b);
-}
-
 void platform_log(char level, const char *tag, const char *fmt, ...)
 {
+	char a[256], b[256];
 	va_list args;
 	va_start(args, fmt);
-	logv(level, tag, fmt, args);
+	vsprintf_s(a, sizeof(a), fmt, args);
+	sprintf_s(b, sizeof(b), "%c/%s/(%5d): %s\n", level, tag, GetCurrentProcessId(), a);
 	va_end(args);
+	OutputDebugStringA(b);
 }
 
 int platform_get_usec(void)
@@ -62,9 +57,11 @@ void platform_unlock_framebuffer(uint8_t *ptr)
 	const int padding_bytes_per_row = ((width_in_bytes + 3) & ~3) - width_in_bytes;
 	uint8_t *dest = me.bitmap;
 	int rows = me.framebuffer_height_in_pixels;
-	while (rows-- > 0) {
+	while (rows-- > 0)
+	{
 		const uint8_t *const end = ptr + width_in_bytes;
-		for (; ptr < end; ptr += 3) {
+		for (; ptr < end; ptr += 3)
+		{
 			*dest++ = ptr[2];
 			*dest++ = ptr[1];
 			*dest++ = ptr[0];
@@ -114,8 +111,10 @@ int platform_fclose(PFILE *fp)
 
 static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-	if (msg == WM_PAINT) {
-		const BITMAPINFOHEADER bmih = {
+	if (msg == WM_PAINT)
+	{
+		const BITMAPINFOHEADER bmih =
+		{
 			sizeof(BITMAPINFOHEADER),
 			me.framebuffer_width_in_pixels, -me.framebuffer_height_in_pixels, 1, 24, BI_RGB
 		};
@@ -165,7 +164,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE dont_care, LPSTR doont_care, int d
 {
 	static LPCTSTR name = _T("Second Reality");
 	me.hwnd = CreateWindow(register_class(hinst, name), name, WS_OVERLAPPEDWINDOW, 0, 0, 0, 0, NULL, NULL, hinst, NULL);
-	if (me.hwnd) {
+	if (me.hwnd)
+	{
 		show_window(me.hwnd, 640, 480);
 		QueryPerformanceCounter(&me.initial_perf_counter);
 		QueryPerformanceFrequency(&me.perf_frequency);
