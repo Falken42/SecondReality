@@ -332,7 +332,7 @@ char *MK_FP(int seg, int off)
 		return vga_buffer + off;
 
 	// otherwise, return a valid pointer to memory
-	return (char *)((seg << 16) + off);
+	return (char *)(seg + (off - seg));
 }
 
 static void vga_set_plane(uint8_t mask)

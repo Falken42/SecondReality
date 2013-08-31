@@ -3,10 +3,10 @@
 
 #include "platform.h"
 
-// eliminate far keyword
+// eliminate far keyword, and pass-through segment and offset macros
 #define far
-#define FP_SEG(x)			( (int)(x) >> 16 )
-#define FP_OFF(x)			( (int)(x) & 0xFFFF )
+#define FP_SEG(x)			(x)
+#define FP_OFF(x)			(x)
 
 extern char *MK_FP(int seg, int off);
 extern void outportb(unsigned short int port, unsigned char val);
