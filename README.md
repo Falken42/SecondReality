@@ -7,7 +7,7 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 - Part 1 (alku): Renders and executes fully.  Bugs: Text does not scroll yet (needs ascrolltext() function implemented).
 - Part 2 (u2a): Not yet implemented.
-- Part 3 (pam): Screen flash and fade renders, but no explosion effect is visible yet.
+- Part 3 (pam): Screen flash and fade renders fully, explosion effect partially works.  Bugs: Graphic corruption, and incorrect page flipping.
 - Part 4 (beg): Renders and executes fully.
 - No audio playback code has been written yet.
 - Timing and synchronization is not perfect.
