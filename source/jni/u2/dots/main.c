@@ -12,7 +12,7 @@ extern int bpmin,bpmax;
 
 extern char *bgpic;
 extern int rotsin,rotcos;
-extern int *const rows;
+extern int rows[];
 extern long depthtable1[];
 extern long depthtable2[];
 extern long depthtable3[];

@@ -22,14 +22,7 @@ int dotnum;
 
 int gravityd = 16;
 
-static int rows_storage[4 + 200] =
-{
-	-1280,
-	-960,
-	-640,
-	-320
-};
-int *const rows = &rows_storage[4];
+int rows[200];
 
 struct s_dot // ripped from main.c
 {
@@ -104,7 +97,7 @@ void drawdots(void)
 		const int column = (uint16_t)(((temp >> 3) + temp) / bp + 160);
 		if (column <= 319)
 		{
-			int row = (uint16_t)((8 << 16) / bp) + 100;
+			int row = (uint16_t)((8 << 16) / bp + 100);
 			if (row <= 199)
 			{
 				// shadow
@@ -123,7 +116,7 @@ void drawdots(void)
 					si->y += si->yadd;
 				}
 
-				row = (uint16_t)((si->y << 6) / bp) + 100;
+				row = (uint16_t)((si->y << 6) / bp + 100);
 				if (row <= 199)
 				{
 					plot(vram, si);
@@ -135,9 +128,9 @@ void drawdots(void)
 						bpmax = bp;
 
 					temp = rows[row] + column;
-					store16(&vram[temp + 1], load16le(&depthtable1[bp]));
-					store32(&vram[temp + 320], load32le(&depthtable2[bp]));
-					store16(&vram[temp + 641], load16le(&depthtable3[bp]));
+					store16(&vram[temp + 1], load16le((const char *)depthtable1 + bp));
+					store32(&vram[temp + 320], load32le((const char *)depthtable2 + bp));
+					store16(&vram[temp + 641], load16le((const char *)depthtable3 + bp));
 					si->old2 = temp;
 
 					continue;
