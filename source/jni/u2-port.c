@@ -23,7 +23,7 @@ char  pic[44575];				// size of srtitle.up
 
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
-static int dis_sync_val, dis_sync_time;
+static int dis_sync_val, dis_sync_time, dis_partid = 0;
 static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
 static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
@@ -313,6 +313,8 @@ void demo_execute()
 	// execute each part
 	alku_main();
 
+	dis_partstart();	// <-- required to increment dis_partid until u2a is implemented
+
 	pam_main();
 
 	// HACK: until we can properly determine the resolution from the VGA registers
@@ -328,8 +330,8 @@ void demo_execute()
 char *MK_FP(int seg, int off)
 {
 	// if segment points to VGA memory, then return a pointer to our emulated VGA buffer instead
-	if (seg == 0xA000)
-		return vga_buffer + off;
+	if ((seg >= 0xA000) && (seg < 0xB000))
+		return vga_buffer + ((seg - 0xA000) << 4) + off;
 
 	// otherwise, return a valid pointer to memory
 	return (char *)(seg + (off - seg));
@@ -338,8 +340,8 @@ char *MK_FP(int seg, int off)
 static void vga_set_plane(uint8_t mask)
 {
 	// multiple plane writes currently not supported
-	if (bitcount(mask) > 1)
-		LOGI("vga_set_plane: VGA plane change to multiple planes [mask=0x%02X]", mask);
+//	if (bitcount(mask) > 1)
+//		LOGI("vga_set_plane: VGA plane change to multiple planes [mask=0x%02X]", mask);
 
 	// determine new plane, and check if different
 	const uint8_t new_plane = ilog2(mask);
@@ -571,7 +573,8 @@ void setpalarea(char *pal, int start, int cnt)
 
 void dis_partstart()
 {
-	LOGI("---------- starting next part ----------");
+	dis_partid++;
+	LOGI("---------- starting next part: id=%d ----------", dis_partid);
 }
 
 void dis_waitb()
@@ -609,7 +612,8 @@ int dis_exit()
 		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
 
 		// handle copper scrolling (func: copper1, alku/copper.asm)
-		tw_setstart(cop_start);
+		outport(0x3D4, ((cop_start & 0x00FF) << 8) | 0x0D);
+		outport(0x3D4,  (cop_start & 0xFF00)       | 0x0C);
 		outportb(0x3C0, 0x33);
 		outportb(0x3C0, cop_scrl);
 
@@ -664,13 +668,24 @@ void close_copper()
 {
 }
 
+// note: there are multiple tweak.asm sources, each with their own different implementation of tw_opengraph
 void tw_opengraph()
 {
 	// turn off chain-4
 	outport(0x3C4, 0x0604);
 
-	// 320x372 visible, with 704 pixel stride (176*4)
-	demo_set_video_mode(320, 372, 704);
+	switch (dis_partid)
+	{
+		case 1:
+			// alku: 320x372 visible, with 704 pixel stride (176*4)
+			demo_set_video_mode(320, 372, 704);
+			break;
+
+		case 3:
+			// pam: 320x200, unchained
+			demo_set_video_mode(320, 200, 320);
+			break;
+	}
 }
 
 void tw_putpixel(int x, int y, int color)
@@ -719,23 +734,12 @@ void tw_setpalette(char *pal)
 
 void tw_setstart(int s)
 {
-	outport(0x3D4, ((s & 0x00FF) << 8) | 0x0D);
-	outport(0x3D4,  (s & 0xFF00)       | 0x0C);
+	cop_start = s;
 }
 
 void tw_waitvr()
 {
 	// TODO: is this timing sufficient?
 	dis_waitb();
-}
-
-// from pam/asmyt.asm
-void init_uframe(int seg)
-{
-}
-
-// from pam/asmyt.asm
-void ulosta_frame(int start)
-{
 }
 
