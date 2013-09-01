@@ -1,1 +1,1 @@
-(premake4 gmake) && (mingw32-make CC=clang config=debug)
+(premake4 gmake) && (mingw32-make CC=gcc config=debug)

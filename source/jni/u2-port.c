@@ -325,6 +325,16 @@ void demo_execute()
 	cop_dofade = 0;
 
 	beg_main();
+
+	// EVEN MORE HACK:
+	demo_set_video_mode(320, 200, 320);
+	outp(0x3C4, 2);
+	outp(0x3C5, 1);
+	outp(0x3C4, 4);
+	outp(0x3C5, 8);
+	memset(vga_buffer, 0, 65536);
+
+	dots_main();
 }
 
 char *MK_FP(int seg, int off)
@@ -412,8 +422,9 @@ void outportb(unsigned short int port, unsigned char val)
 			}
 			break;
 
+		case 0x3C7:
 		case 0x3C8:
-			// set palette color index, starting with red component
+			// get(0x3C7) or set(0x3C8) palette color index, starting with red component
 			vga_pal_index = val;
 			vga_pal_comp  = 0;
 			break;
@@ -496,8 +507,26 @@ void outport(unsigned short int port, unsigned short int val)
 
 unsigned char inportb(unsigned short int port)
 {
-	// TODO
-	return 0;
+	unsigned char val = 0;
+	switch (port)
+	{
+		case 0x3C9:
+			// get palette entry
+			val = vga_pal[(vga_pal_index * 3) + vga_pal_comp];
+
+			// increment component, check for rollover
+			if ((++vga_pal_comp) >= 3)
+			{
+				vga_pal_index++;
+				vga_pal_comp = 0;
+			}
+			break;
+
+		default:
+			LOGI("inportb(0x%03X): unhandled port", port);
+			break;
+	}
+	return val;
 }
 
 unsigned char inp(unsigned short int port)
@@ -571,17 +600,30 @@ void setpalarea(char *pal, int start, int cnt)
 		outportb(0x3C9, *pal++);
 }
 
+int dis_indemo()
+{
+	// always 1 for us
+	return 1;
+}
+
+int dis_musplus()
+{
+	// NIY
+	return 0;
+}
+
 void dis_partstart()
 {
 	dis_partid++;
 	LOGI("---------- starting next part: id=%d ----------", dis_partid);
 }
 
-void dis_waitb()
+int dis_waitb()
 {
 	// wait for vblank
 	frame_count = 0;
 	while (frame_count < 1 && !dis_exit());
+	return 1;
 }
 
 int dis_sync()

@@ -4,7 +4,7 @@
 #include <conio.h>
 #include <malloc.h>
 #include <math.h>
-#include "..\dis\dis.h"
+#include "../../u2-port.h"
 
 extern int face[];
 
@@ -12,7 +12,7 @@ extern int bpmin,bpmax;
 
 extern char *bgpic;
 extern int rotsin,rotcos;
-extern int rows[];
+extern int *const rows;
 extern long depthtable1[];
 extern long depthtable2[];
 extern long depthtable3[];
@@ -22,19 +22,17 @@ extern int dotnum;
 
 extern void drawdots(void);
 
-char far *vram=(char far *)0xa0000000L;
-
-char	pal[768];
-char	pal2[768];
+static char	pal[768];
+static char	pal2[768];
 
 extern sin1024[];
 
-int	isin(int deg)
+static int	isin(int deg)
 {
 	return(sin1024[deg&1023]);
 }
 
-int	icos(int deg)
+static int	icos(int deg)
 {
 	return(sin1024[(deg+256)&1023]);
 }
@@ -55,6 +53,7 @@ extern int gravity;
 extern int gravitybottom;
 extern int gravityd;
 
+#if 0 // unused
 void setborder(int color)
 {
 	_asm
@@ -68,23 +67,25 @@ void setborder(int color)
 		out	dx,al
 	}
 }
+#endif
 
-int	cols[]={
+static int	cols[]={
 0,0,0,
 4,25,30,
 8,40,45,
 16,55,60};
-int	dottaul[1024];
+static int	dottaul[1024];
 
-main(int argc,char *argv[])
+dots_main(int argc,char *argv[])
 {
+	char far *vram=MK_FP(0x0a000,0);
 	int	timer=30000;
 	int	dropper,repeat;
 	int	frame=0;
 	int	rota=-1*64;
 	int	fb=0;
 	int	rot=0,rots=0;
-	int	a,b,c,d,i,j,mode;
+	int	a,b,c,d,i,j=0,mode;
 	int	grav,gravd;
 	int	f=0;
 	dis_partstart();
@@ -122,8 +123,8 @@ main(int argc,char *argv[])
 		d=dot[b].z; dot[b].z=dot[c].z; dot[c].z=d;
 	}
 	for(a=0;a<200;a++) rows[a]=a*320;
-	_asm mov ax,13h
-	_asm int 10h
+	// _asm mov ax,13h
+	// _asm int 10h
 	outp(0x3c8,0);
 	for(a=0;a<16;a++) for(b=0;b<4;b++)
 	{
@@ -165,7 +166,7 @@ main(int argc,char *argv[])
 		depthtable3[a]=0x202+0x04040404*c;
 		//depthtable4[a]=0x02020302+0x04040404*c;
 	}
-	bgpic=halloc(64000L,1L);
+	bgpic=calloc(64000L,1L);
 	memcpy(bgpic,vram,64000);
 	a=0;
 	for(b=64;b>=0;b--)
@@ -284,8 +285,9 @@ main(int argc,char *argv[])
 	}
 	if(!dis_indemo())
 	{
-		_asm mov ax,3h
-		_asm int 10h
+		// _asm mov ax,3h
+		// _asm int 10h
 	}
+	free(bgpic);
 	return(0);
 }

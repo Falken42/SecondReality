@@ -5,15 +5,19 @@ solution "u2"
 		flags {"WinMain"}
 		language "C"
 		files {
-			"../jni/platform-win32.c",
 			"../jni/u2-port.c",
+			"../jni/pam-port.c",
+			"../jni/platform-win32.c",
+			"../jni/sin1024.c",
 			"../jni/u2/alku/main.c",
 			"../jni/u2/pam/outtaa.c",
-			"../jni/u2/beg/beg.c"
+			"../jni/u2/beg/beg.c",
+			"../jni/u2/dots/dots-main.c",
+			"../jni/u2/dots/dots-asm.c"
 		}
 		targetdir "../assets"
 		buildoptions {
-			"-fno-color-diagnostics",
+			-- "-fno-color-diagnostics",
 			"-funsigned-char",
 			"-Wno-unused-value"
 		}

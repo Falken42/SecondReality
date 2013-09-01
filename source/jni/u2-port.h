@@ -12,7 +12,10 @@ extern char *MK_FP(int seg, int off);
 extern void outportb(unsigned short int port, unsigned char val);
 extern void outport(unsigned short int port, unsigned short int val);
 
+extern int  dis_indemo();
+extern int  dis_musplus();
 extern void dis_partstart();
+extern int  dis_waitb();
 extern int  dis_sync();
 extern int  dis_exit();
 
