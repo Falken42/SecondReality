@@ -1,5 +1,5 @@
-OUYA/Android port of Second Reality
-===================================
+OUYA/Android/Win32 port of Second Reality
+=========================================
 
 This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
 
@@ -9,6 +9,7 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 - Part 2 (u2a): Not yet implemented.
 - Part 3 (pam): Screen flash and fade renders fully, explosion effect partially works.  Bugs: Graphic corruption, and incorrect page flipping.
 - Part 4 (beg): Renders and executes fully.
+- Part 15 (dots): Renders and executes fully.  Bugs: Crashes on Android near the end.
 - No audio playback code has been written yet.
 - Timing and synchronization is not perfect.
 
@@ -16,7 +17,9 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 *Commit c8da9a9 running on a Kindle Fire HD*
 
-To build, clone the repository and run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
+To build the Android version, clone the repository and run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
+
+The Win32 version is currently in an experimental state, but is functional.  You will need an mingw environment, premake4, and gcc-4.6 binaries from [here](https://github.com/kripken/emscripten/wiki/Using-Emscripten-on-Windows).  Run build.cmd in the source/win32 folder to build an .exe.
 
 If you are interested in helping, Pull Requests are welcomed.
 
@@ -33,6 +36,14 @@ Another function, outport(), is used to directly access the VGA hardware.  This 
 To actually render a frame, the demo calls an internal function called dis\_exit() to determine if the ESC key has been pressed and the demo should quit.  This function is called throughout the entire code, and is the main hook used for rendering.  After a simulated VBlank has passed (16.667ms / 60fps), the current VGA buffers and palette are combined into a frame buffer, uploaded as a texture to OpenGL, and rendered as a fullscreen polygon.
 
 Instead of handling each part as a separate executable, this port compiles and statically links all of the parts together and calls them directly in the order of the original demo.
+
+
+Multiplatform Support
+=====================
+
+All of the platform-specific code has been abstracted away in its own interface.  If you wish to add a new platform, implement the functions in source/jni/platform.h in a separate source file and add that source file to your build system.  Implement main() or entry point function is required for your platform, and call the demo\_execute() function listed in u2-port.h to run the demo.
+
+Note that the Second Reality code was originally developed for DOS and is non-reentrant.  Once you call demo\_execute(), it will **not return** until after the entire demo has completed.  The only idle callback function provided is through platform\_handle\_events(), but if your platform cannot render properly without returning from it's caller, then this port will not work on your platform.  It might be possible to work around this by using fibers, however.  Note that there are no plans to overhaul the original code to support reentrancy.
 
 
 Older Screenshots
