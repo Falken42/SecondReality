@@ -165,7 +165,7 @@ dots_main(int argc,char *argv[])
 		depthtable3[a]=0x202+0x04040404*c;
 		//depthtable4[a]=0x02020302+0x04040404*c;
 	}
-	bgpic=calloc(64000L,1L);
+	bgpic=calloc(65536L,1L); // asm.asm writes past the end of bgpic[64000]
 	memcpy(bgpic,vram,64000);
 	a=0;
 	for(b=64;b>=0;b--)
