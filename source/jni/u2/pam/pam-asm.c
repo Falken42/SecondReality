@@ -1,5 +1,8 @@
-#include <stdio.h>
-#include "u2-port.h"
+//
+// ported from pam/asmyt.asm
+//
+
+#include "../../u2-port.h"
 
 static const uint8_t *aseg;
 

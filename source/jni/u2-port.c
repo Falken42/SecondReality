@@ -28,6 +28,9 @@ static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
 static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
 
+// some prototypes
+void outp(unsigned short int port, unsigned char val);
+
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
 {
