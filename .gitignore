@@ -6,3 +6,4 @@ ipch
 *.docstates
 *.suo
 *.user
+*.opensdf
