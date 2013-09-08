@@ -13,9 +13,9 @@ This is a port of Second Reality by Future Crew updated to run on present-day pl
 - No audio playback code has been written yet.
 - Timing and synchronization is not perfect.
 
-![Running on a Kindle Fire HD](http://falken42.github.com/sr5.jpg)
+![dots part running on OUYA](http://falken42.github.com/sr6.jpg)
 
-*Commit c8da9a9 running on a Kindle Fire HD*
+*Commit 9f74af7 running on the OUYA, after adding dots part*
 
 To build the Android version, run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
 
@@ -64,6 +64,10 @@ Older Screenshots
 ![Running on a Kindle Fire HD](http://falken42.github.com/sr4.jpg)
 
 *Commit 52a9fac running on a Kindle Fire HD, after various bug fixes*
+
+![Running on a Kindle Fire HD](http://falken42.github.com/sr5.jpg)
+
+*Commit c8da9a9 running on a Kindle Fire HD, after adding beg part*
 
 
 License
