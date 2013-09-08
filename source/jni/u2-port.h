@@ -31,5 +31,8 @@ extern int  tw_getpixel(int x, int y);
 extern void tw_setpalette(char *pal);
 extern void tw_setstart(int s);
 
+// functions which need wrapping because of C library differences
+extern int fcrand();
+
 #endif // U2_PORT
 

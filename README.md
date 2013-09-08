@@ -1,15 +1,15 @@
 OUYA/Android/Win32 port of Second Reality
 =========================================
 
-This is a port of Second Reality by Future Crew focused to run on the OUYA platform (but should work fine on any other Android 2.3 device or higher).
+This is a port of Second Reality by Future Crew updated to run on present-day platforms.  The OUYA is the focus, but should work fine on any other Android 2.3 device or higher.  See below for Win32 support.
 
 **Current status**:
 
-- Part 1 (alku): Renders and executes fully.  Bugs: Text does not scroll yet (needs ascrolltext() function implemented).
+- Part 1 (alku): Renders and executes fully.  Bugs: Text does not scroll properly (needs ascrolltext() function implemented).
 - Part 2 (u2a): Not yet implemented.
 - Part 3 (pam): Screen flash and fade renders fully, explosion effect partially works.  Bugs: Graphic corruption, and incorrect page flipping.
 - Part 4 (beg): Renders and executes fully.
-- Part 15 (dots): Renders and executes fully.  Bugs: Crashes on Android near the end.
+- Part 15 (dots): Renders and executes fully.
 - No audio playback code has been written yet.
 - Timing and synchronization is not perfect.
 
@@ -17,9 +17,9 @@ This is a port of Second Reality by Future Crew focused to run on the OUYA platf
 
 *Commit c8da9a9 running on a Kindle Fire HD*
 
-To build the Android version, clone the repository and run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
+To build the Android version, run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
 
-The Win32 version is currently in an experimental state, but is functional.  You will need an mingw environment, premake4, and gcc-4.6 binaries from [here](https://github.com/kripken/emscripten/wiki/Using-Emscripten-on-Windows).  Run build.cmd in the source/win32 folder to build an .exe.
+The Win32 version is currently in an experimental state, but is functional.  To build with Visual Studio 2010, open the solution in the source/win32 folder and execute.
 
 If you are interested in helping, Pull Requests are welcomed.
 
@@ -41,9 +41,9 @@ Instead of handling each part as a separate executable, this port compiles and s
 Multiplatform Support
 =====================
 
-All of the platform-specific code has been abstracted away in its own interface.  If you wish to add a new platform, implement the functions in source/jni/platform.h in a separate source file and add that source file to your build system.  Implement main() or entry point function is required for your platform, and call the demo\_execute() function listed in u2-port.h to run the demo.
+All of the platform-specific code has been abstracted away in its own interface.  If you wish to add a new platform, implement the functions in source/jni/platform.h in a separate source file and add that source file to your build system.  Implement main() or whatever entry point function is required for your platform, and call the demo\_execute() function listed in u2-port.h to run the demo.
 
-Note that the Second Reality code was originally developed for DOS and is non-reentrant.  Once you call demo\_execute(), it will **not return** until after the entire demo has completed.  The only idle callback function provided is through platform\_handle\_events(), but if your platform cannot render properly without returning from it's caller, then this port will not work on your platform.  It might be possible to work around this by using fibers, however.  Note that there are no plans to overhaul the original code to support reentrancy.
+Note that the Second Reality code was originally developed for DOS and is non-reentrant.  Once you call demo\_execute(), it will **not return** until after the entire demo has completed.  The only idle callback function provided is through platform\_handle\_events(), but if your platform cannot render properly without returning from its caller, then this port will not work on your platform.  It might be possible to work around this limitation by using fibers, however.  Note that there are no plans to overhaul the original code to support reentrancy.
 
 
 Older Screenshots

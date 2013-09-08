@@ -781,3 +781,9 @@ void tw_waitvr()
 	dis_waitb();
 }
 
+int fcrand()
+{
+	// Android RAND_MAX is 2^31, which breaks the demo.  clamp to [0,32767] inclusive.
+	return rand() % 32768;
+}
+

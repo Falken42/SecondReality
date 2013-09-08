@@ -233,9 +233,9 @@ dots_main(int argc,char *argv[])
 				dot[i].yadd=300;
 				if(frame>1640 && !(frame&31) && grav>-2) grav--;
 				*/
-				dot[i].x=rand()-16384;
-				dot[i].y=8000-rand()/2;
-				dot[i].z=rand()-16384;
+				dot[i].x=fcrand()-16384;
+				dot[i].y=8000-fcrand()/2;
+				dot[i].z=fcrand()-16384;
 				dot[i].yadd=0;
 				if(frame>1900 && !(frame&31) && grav>0) grav--;
 			}
