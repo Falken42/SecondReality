@@ -1,10 +1,4 @@
-#include <stdio.h>
-#include <conio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "..\dis\dis.h"
-
-static char *vram=(char *)0xa0000000L;
+#include "../../u2-port.h"
 
 static char *bg;
 
@@ -22,20 +16,22 @@ void	zoomer2(char *pic)
 	int	frame=0;
 	int	zly,zy,zya;
 	int	zly2,zy2;
+	char *vram=(char *)MK_FP(0xa000,0x0000);
 
-	_asm
-	{
-		mov	dx,3c4h
-		mov	ax,0f02h
-		out	dx,ax
-	}	
+//	_asm
+//	{
+//		mov	dx,3c4h
+//		mov	ax,0f02h
+//		out	dx,ax
+//	}	
+	outport(0x3C4, 0x0F02);
 	outp(0x3c7,0);
 	for(a=0;a<768;a++) pal1[a]=inp(0x3c9);
 
 	zy=0; zya=0; zly=0;
 	zy2=0; zly2=0;
 	frame=0;
-	while(!kbhit())
+	while(!dis_exit())
 	{
 		if(zy==260) break;
 		zly=zy;
@@ -86,6 +82,7 @@ void	zoomer1(char *pic)
 	int	y1,y2,z1,z2,yd;
 	int	y,z,f=0,frame=0;
 	int	rot;
+	char *vram=(char *)MK_FP(0xa000,0x0000);
 	bg=pic;
 	for(y=199;y>=0;y--)
 	{
@@ -97,7 +94,7 @@ void	zoomer1(char *pic)
 	{
 		bg[200*326+q]=7;
 	}
-	while(!kbhit() && frame<=128)
+	while(!dis_exit() && frame<=128)
 	{
 		q=(int)((long)frame*(long)frame/128L)*2;
 		dist=320-(320-245)*frame/128;

@@ -21,15 +21,19 @@ char  memblock[(65535 * 4) + 62486];	// sizes calced from parsed out.in[0-4] dat
 // part4: beg
 char  pic[44575];				// size of srtitle.up
 
+// part5: glenz
+char  fc[64784];				// size of fc.uh
+char  backpal[16 * 3];
+char  lightshift;
+int   demomode[3];
+
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time, dis_partid = 0;
+static void (*dis_routine[3])();
 static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
 static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
-
-// some prototypes
-void outp(unsigned short int port, unsigned char val);
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -89,6 +93,9 @@ static void demo_init()
 	last_frame_time = platform_get_usec();
 	dis_sync_val    = 0;
 	dis_sync_time   = last_frame_time;
+
+	for (t = 0; t < 3; t++)
+		dis_routine[t] = NULL;
 }
 
 static void demo_set_video_mode(int width, int height, int stride)
@@ -315,6 +322,11 @@ void demo_execute()
 	memcpy(pic, tmp, sizeof(pic));
 	free(tmp);
 
+	// part 5: glenz
+	tmp = demo_load_asset("fc.uh");
+	memcpy(fc, tmp, sizeof(fc));
+	free(tmp);
+
 	// execute each part
 	alku_main();
 
@@ -330,6 +342,7 @@ void demo_execute()
 	cop_dofade = 0;
 
 	beg_main();
+//	glenz_main();
 
 	// EVEN MORE HACK:
 	demo_set_video_mode(320, 200, 320);
@@ -641,10 +654,19 @@ int dis_sync()
 
 int dis_exit()
 {
+	int t;
+	const int now = platform_get_usec();
+
 //	LOGI("dis_exit: frame_count = %d", frame_count);
 
+	// call registered callbacks
+	for (t = 0; t < 3; t++)
+	{
+		if (dis_routine[t] != NULL)
+			dis_routine[t]();
+	}
+
 	// render a frame every 16.667 msec (60Hz vblank)
-	const int now = platform_get_usec();
 	if ((now - last_frame_time) >= 16667)
 	{
 		// copy current VGA buffer to the proper plane
@@ -697,6 +719,21 @@ int dis_exit()
 	}
 
 	return platform_handle_events();
+}
+
+void dis_setmframe(int frame)
+{
+	frame_count = frame;
+}
+
+int dis_getmframe()
+{
+	return frame_count;
+}
+
+void dis_setcopper(int routine_number, void (*routine)())
+{
+	dis_routine[routine_number] = routine;
 }
 
 void init_copper()

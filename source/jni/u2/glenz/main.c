@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <math.h>
-#include <conio.h>
-#include <dos.h>
-#include <stdlib.h>
-#include "..\dis\dis.h"
+#include "../../u2-port.h"
 
 extern int sin1024[];
 
@@ -14,8 +9,6 @@ char bgpic[65535];
 extern char fc[];
 char *fcrow[100];
 char *fcrow2[16];
-
-char far *vram=(char far *)0xa0000000L;
 
 extern char lightshift;
 
@@ -270,7 +263,7 @@ void _loadds copper(void)
 }
 #pragma check_stack(on)
     
-main()
+glenz_main()
 {
     int a,b,c,x,y,rx,ry,rz,n=8,p1,p2,r,g,zpos=7500,y1,y2,rya,ypos,yposa;
     int ya,yy,boingm=6,boingd=7;
@@ -284,6 +277,7 @@ main()
     int lasta=-1;
     char    *ps,*pd,*pp;
     unsigned int u;
+	char far *vram=(char far *)MK_FP(0xa000,0x0000);
 
     dis_partstart();
 
@@ -292,15 +286,16 @@ main()
 
     zoomer2();
 
-    _asm mov dx,3c4h
-    _asm mov ax,0f02h
-    _asm out dx,ax
+//    _asm mov dx,3c4h
+//    _asm mov ax,0f02h
+//    _asm out dx,ax
+	outp(0x3C4, 0x0F02);
     memset(vram,0,65535);
-    _asm
-    {
-        mov ax,13h
-        int 010h
-    }
+//    _asm
+//    {
+//        mov ax,13h
+//        int 010h
+//    }
     testasm();
 
     for(a=0;a<100;a++)
@@ -347,7 +342,7 @@ main()
             if(c>7) memset(pd,0,320);
             else memcpy(pd,fcrow2[c],320);
         }
-        waitb();
+        dis_waitb();
     }
     
     while(!dis_exit() && dis_getmframe()<300);
@@ -408,6 +403,7 @@ main()
     dis_setcopper(0,copper);
     while(frame<7000 && !dis_exit())
     {
+	LOGI("--- glenz: frame=%d", frame);
         a=dis_musplus(); if(a<0 && a>-16) break;
         
 	repeat=dis_waitb();
@@ -642,7 +638,7 @@ main()
     dis_setcopper(0,NULL);
     if(!dis_indemo())
     {
-        _asm mov ax,3
-        _asm int 10h
+//        _asm mov ax,3
+//        _asm int 10h
     }
 }

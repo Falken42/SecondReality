@@ -3,8 +3,9 @@
 
 #include "platform.h"
 
-// eliminate far keyword, and pass-through segment and offset macros
+// eliminate unnecessary keywords, and pass-through segment and offset macros
 #define far
+#define _loadds
 #define FP_SEG(x)			(x)
 #define FP_OFF(x)			(x)
 
@@ -24,6 +25,9 @@ extern void dis_partstart();
 extern int  dis_waitb();
 extern int  dis_sync();
 extern int  dis_exit();
+extern void dis_setmframe(int frame);
+extern int  dis_getmframe();
+extern void dis_setcopper(int routine_number, void (*routine)());
 
 extern void tw_opengraph();
 extern void tw_putpixel(int x, int y, int color);

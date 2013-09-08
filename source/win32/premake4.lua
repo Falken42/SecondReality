@@ -20,6 +20,9 @@ solution "u2"
 			"../jni/u2/pam/outtaa.c",
 			"../jni/u2/pam/pam-asm.c",
 			"../jni/u2/beg/beg.c",
+			"../jni/u2/glenz/glenz-main.c",
+			"../jni/u2/glenz/glenz-asm.c",
+			"../jni/u2/glenz/zoomer.c",
 			"../jni/u2/dots/dots-main.c",
 			"../jni/u2/dots/dots-asm.c"
 		}

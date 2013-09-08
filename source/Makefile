@@ -1,7 +1,7 @@
 default: bin/secondreality-debug.apk
 
 bin/secondreality-debug.apk: local.properties jni/u2-port.c jni/u2-port.h jni/u2/alku/main.c
-	@ndk-build NDK_DEBUG=0
+	@ndk-build NDK_DEBUG=1
 	@ant debug
 	@mv bin/secondreality-debug.apk bin/secondreality.apk
 	@-adb uninstall jp.falken42.secondreality
