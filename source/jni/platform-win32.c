@@ -86,7 +86,11 @@ int platform_handle_events(void)
 PFILE *platform_fopen(const char *fname, const char *mode)
 {
 	PFILE *fp;
-	return fopen_s(&fp, fname, mode) ? NULL : fp;
+	char assetfname[256];
+
+	// rewrite path to assets for win32
+	_snprintf(assetfname, sizeof(assetfname), "../assets/%s", fname);
+	return fopen_s(&fp, assetfname, mode) ? NULL : fp;
 }
 
 size_t platform_fread(void *buf, size_t size, size_t count, PFILE *fp)

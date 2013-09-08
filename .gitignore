@@ -1,1 +1,8 @@
 .DS_Store
+Debug
+Release
+ipch
+*.sdf
+*.docstates
+*.suo
+*.user

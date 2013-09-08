@@ -8,7 +8,13 @@
 #define FP_SEG(x)			(x)
 #define FP_OFF(x)			(x)
 
+// MSVC defines inp() and outp() as intrinsic functions, so work around their usage
+#define inp					inportb
+#define outp				outportb
+
 extern char *MK_FP(int seg, int off);
+
+unsigned char inportb(unsigned short int port);
 extern void outportb(unsigned short int port, unsigned char val);
 extern void outport(unsigned short int port, unsigned short int val);
 

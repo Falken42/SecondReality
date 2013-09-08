@@ -12,6 +12,8 @@ beg_main()
 {
     char    far *vram=MK_FP(0x0a000,0);
 	int	a,b,c,y;
+	unsigned char al;
+
 	dis_partstart();
 	outp(0x3c4,2);
 	outp(0x3c5,15);
@@ -39,7 +41,7 @@ beg_main()
 	outport(0x3D4, 0x000C);
 	outport(0x3D4, 0x000D);
 	outp(0x3D4, 9);
-	unsigned char al = inp(0x3D5);
+	al = inp(0x3D5);
 	al &= ~0x80;
 	al &= ~31;
 	outp(0x3D5, al);

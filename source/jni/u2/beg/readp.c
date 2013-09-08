@@ -11,6 +11,8 @@ void	readp(char *dest,int row,char *src)
 {
 	int	bytes,a,b;
 	struct st_readp *hdr;
+	char *end;
+
 	hdr=(struct st_readp *)src;
 	if(row==-1)
 	{
@@ -28,7 +30,7 @@ void	readp(char *dest,int row,char *src)
 	bytes=*(short int *)src;
 	src+=2;
 
-	char *end = src + bytes;
+	end = src + bytes;
 	while (src < end)
 	{
 		int8_t al = *src++;

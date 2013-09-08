@@ -68,8 +68,8 @@ alku_main()
 	while(dis_sync()<3 && !dis_exit());
 
 	prtc(160,120,"in");
-	prtc(160,160,"");
-	prtc(160,179,"™");
+	prtc(160,160,"\x8f");
+	prtc(160,179,"\x99");
 	dofade(fade1,fade2); wait(300); dofade(fade2,fade1); fonapois();
 
 	while(dis_sync()<4 && !dis_exit());
@@ -288,9 +288,9 @@ prt(int x,int y,char *txt)
 
 prtc(int x,int y,char *txt)
 {
-	LOGI("prtc(%d, %d, \"%s\")", x, y, txt);
 	int	w=0;
 	char	*t=txt;
+	LOGI("prtc(%d, %d, \"%s\")", x, y, txt);
 	while(*t) w+=fonaw[*t++]+2;
 	prt(x-w/2,y,txt);
 }

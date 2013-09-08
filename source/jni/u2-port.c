@@ -174,6 +174,8 @@ static void demo_render_frame()
 
 static void *demo_load_assetsz(const char *fname, int *size)
 {
+	void *res;
+
 	PFILE *fp = platform_fopen(fname, "rb");
 	if (fp == NULL)
 	{
@@ -188,7 +190,7 @@ static void *demo_load_assetsz(const char *fname, int *size)
 
 	// allocate memory and load
 	LOGI("load_asset: loading [%s] (%d bytes)...", fname, *size);
-	void *res = malloc(*size + 1); // +1 since demo_load_asmincsz() puts a \0 char at the end during tokenizing
+	res = malloc(*size + 1); // +1 since demo_load_asmincsz() puts a \0 char at the end during tokenizing
 	platform_fread(res, 1, *size, fp);
 	platform_fclose(fp);
 	return res;
@@ -203,18 +205,18 @@ static void *demo_load_asset(const char *fname)
 static void *demo_load_asmincsz(const char *fname, int *size)
 {
 	const int block_size = 16 * 1024;
-
 	int asset_size;
-	char *inc = demo_load_assetsz(fname, &asset_size);
+	char *inc, *src, *end, *next;
+	uint8_t *res  = NULL;
+	uint8_t *dest = NULL;
+	int dist, total = 0;
+
+	inc = demo_load_assetsz(fname, &asset_size);
 	if (inc == NULL)
 		return NULL;
 
-	char *src = inc;
-	char *end = inc + asset_size;
-
-	uint8_t *res  = NULL;
-	uint8_t *dest = NULL;
-	int total     = 0;
+	src = inc;
+	end = inc + asset_size;
 
 	// parse the assembly file
 	for (;;)
@@ -227,14 +229,14 @@ static void *demo_load_asmincsz(const char *fname, int *size)
 			break;
 
 		// advance until we reach a non-integer character
-		char *next = src;
+		next = src;
 		while ((next < end) && ((*next == '-') || isdigit(*next)))
 			next++;
 
 		*next = 0;
 
 		// check if we need to expand our destination buffer
-		const int dist = dest - res;
+		dist = dest - res;
 		if (dist >= total)
 		{
 			total += block_size;
@@ -497,11 +499,6 @@ void outportb(unsigned short int port, unsigned char val)
 	}
 }
 
-void outp(unsigned short int port, unsigned char val)
-{
-	outportb(port, val);
-}
-
 void outport(unsigned short int port, unsigned short int val)
 {
 	outportb(port,     val & 0xFF);
@@ -532,10 +529,6 @@ unsigned char inportb(unsigned short int port)
 	return val;
 }
 
-unsigned char inp(unsigned short int port)
-{
-	return inportb(port);
-}
 
 // from alku/asmyt.asm
 void outline(char *src, char *dest)
@@ -544,10 +537,11 @@ void outline(char *src, char *dest)
 
 	for (cnt = 4; cnt > 0; cnt--)
 	{
-		outport(0x3C4, (mrol << 8) | 0x02);
-
 		const char *si = src + cnt - 1;
 		char *di = dest;
+
+		outport(0x3C4, (mrol << 8) | 0x02);
+
 		di[-352      ] = 0;
 		di[-352 + 176] = 0;
 
@@ -665,13 +659,13 @@ int dis_exit()
 		// handle copper fading (func: copper3, alku/copper.asm)
 		if (cop_dofade)
 		{
-			cop_dofade--;
-			cop_pal = fadepal;
-			do_pal = 1;
-
 			const uint16_t *src = (const uint16_t *)cop_fadepal;
 			uint8_t *dest = fadepal;
 			int ccc, cnt = 768 / 16;
+
+			cop_dofade--;
+			cop_pal = fadepal;
+			do_pal = 1;
 
 			while (cnt--)
 			{
@@ -735,36 +729,35 @@ void tw_opengraph()
 
 void tw_putpixel(int x, int y, int color)
 {
+	int offset = x >> 2;
+
 	// select write plane based on X coordinate
 	const int plane = 1 << (x & 3);
 	outport(0x3C4, (plane << 8) | 0x02);
 
 	// calculate offset
-	int offset = x >> 2;
 	y <<= 4; offset += y;
 	y <<= 1; offset += y;
 	y <<= 2; offset += y;
 
 	// write the pixel
 	*(MK_FP(0xA000, offset)) = color;
-//	LOGI("tw_putpixel(%d, %d) = 0x%02X (%d)", x, y >> 7, color, color);
 }
 
 int tw_getpixel(int x, int y)
 {
+	int offset = x >> 2;
+
 	// select read plane based on X coordinate
 	outport(0x3CE, ((x & 3) << 8) | 0x04);
 
 	// calculate offset
-	int offset = x >> 2;
 	y <<= 4; offset += y;
 	y <<= 1; offset += y;
 	y <<= 2; offset += y;
 
 	// read the pixel
-	const int col = *(MK_FP(0xA000, offset));
-//	LOGI("tw_getpixel(%d, %d) = 0x%02X (%d)", x, y >> 7, col, col);
-	return col;
+	return *(MK_FP(0xA000, offset));
 }
 
 void tw_setpalette(char *pal)
