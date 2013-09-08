@@ -1,3 +1,11 @@
+-- To build with VS2010:
+-- 1. premake4 vs2010
+-- 2. Open the generated solution
+
+-- To build with clang:
+-- 1. premake4 gmake
+-- 2. mingw32-make CC=clang
+
 solution "u2"
 	configurations {"debug", "release"}
 	project "u2"
@@ -15,12 +23,18 @@ solution "u2"
 			"../jni/u2/dots/dots-main.c",
 			"../jni/u2/dots/dots-asm.c"
 		}
-		targetdir "../assets"
-		buildoptions {
-			-- "-fno-color-diagnostics",
-			"-funsigned-char",
-			"-Wno-unused-value"
-		}
+		targetdir "."
+		if _ACTION == "vs2010" then
+			buildoptions {
+				"/J" -- default char type is unsigned
+			}
+		elseif (_ACTION == "gmake") then -- clang
+			buildoptions {
+				"-fno-color-diagnostics",
+				"-funsigned-char",
+				"-Wno-unused-value"
+			}
+		end
 		configuration "debug"
 			targetsuffix "d"
 			defines {"DEBUG"}

@@ -19,7 +19,7 @@ This is a port of Second Reality by Future Crew updated to run on present-day pl
 
 To build the Android version, run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
 
-The Win32 version is currently in an experimental state, but is functional.  To build with Visual Studio 2010, open the solution in the source/win32 folder and execute.
+The Win32 version is currently in an experimental state, but is functional.  You will need the [Premake](http://industriousone.com/premake) installed.  To build with Visual Studio 2010, run "premake4 vs2010" in the source/win32 folder and open the generated solution. See [premake4.lua](https://github.com/Falken42/SecondReality/blob/master/source/win32/premake4.lua) for the details.
 
 If you are interested in helping, Pull Requests are welcomed.
 
