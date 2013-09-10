@@ -1,18 +1,14 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define LOGI(...)	platform_log('I', "SecondReality", __VA_ARGS__)
 #define LOGW(...)	platform_log('W', "SecondReality", __VA_ARGS__)
 
-#ifdef ANDROID
- typedef FILE		PFILE;
-#else
- #include <stdint.h> /* for uint8_t */
- typedef FILE		PFILE;
-#endif
+typedef FILE		PFILE;
 
 extern void demo_execute();
 

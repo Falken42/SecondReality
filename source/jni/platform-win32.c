@@ -23,7 +23,7 @@ void platform_log(char level, const char *tag, const char *fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	vsprintf_s(a, sizeof(a), fmt, args);
-	sprintf_s(b, sizeof(b), "%c/%s/(%5d): %s\n", level, tag, GetCurrentProcessId(), a);
+	sprintf_s(b, sizeof(b), "%c/%s(%5d): %s\n", level, tag, GetCurrentProcessId(), a);
 	va_end(args);
 	OutputDebugStringA(b);
 }
@@ -89,7 +89,7 @@ PFILE *platform_fopen(const char *fname, const char *mode)
 	char assetfname[256];
 
 	// rewrite path to assets for win32
-	_snprintf(assetfname, sizeof(assetfname), "../assets/%s", fname);
+	_snprintf_s(assetfname, sizeof(assetfname), _TRUNCATE, "../assets/%s", fname);
 	return fopen_s(&fp, assetfname, mode) ? NULL : fp;
 }
 

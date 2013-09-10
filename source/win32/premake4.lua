@@ -29,9 +29,12 @@ solution "u2"
 		targetdir "."
 		if _ACTION == "vs2010" then
 			buildoptions {
+				"/wd4013", -- 'function' undefined; assuming extern returning int
+				"/wd4101", -- 'identifier' : unreferenced local variable
+				"/wd4554", -- 'operator' : check operator precedence for possible error; use parentheses to clarify precedence
 				"/J" -- default char type is unsigned
 			}
-		elseif (_ACTION == "gmake") then -- clang
+		elseif _ACTION == "gmake" then -- clang
 			buildoptions {
 				"-fno-color-diagnostics",
 				"-funsigned-char",

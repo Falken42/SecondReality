@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "u2-port.h"
 
 // Second Reality externed variables
@@ -19,10 +20,10 @@ char  pal[769 + (768 * 64)];			// size from pal.inc plus 768*64 buffer in pam/in
 char  memblock[(65535 * 4) + 62486];	// sizes calced from parsed out.in[0-4] data
 
 // part4: beg
-char  pic[44575];				// size of srtitle.up
+char  pic[44575];				// size of raw data extracted from beg/_pic.obk
 
 // part5: glenz
-char  fc[64784];				// size of fc.uh
+char  fc[64784];				// size of raw data extracted from glenz/_fc.obk
 char  backpal[16 * 3];
 char  lightshift;
 int   demomode[3];
@@ -203,10 +204,22 @@ static void *demo_load_assetsz(const char *fname, int *size)
 	return res;
 }
 
-static void *demo_load_asset(const char *fname)
+static void *demo_load_obk(const char *fname, int *size)
 {
-	int dummy;
-	return demo_load_assetsz(fname, &dummy);
+	int len;
+	uint8_t *const obk = (uint8_t *)demo_load_assetsz(fname, &len), *res = NULL;
+	if (obk) {
+		// do an inverse operation of u2/util/doobj.c
+		const uint8_t *blk = obk;
+		res = (uint8_t *)malloc(len);
+		for (len = 0; len < 5; len++)
+			blk += blk[1] + 3;
+		for (*size = 0; blk[0] == 0xA0; blk += 7 + len, *size += len)
+			memcpy(&res[blk[5] * 256 + blk[4]], &blk[6], len = blk[2] * 256 + blk[1] - 4);
+		free(obk);
+		LOGI("load_obk: extracted to [%d] binary bytes", *size);
+	}
+	return res;
 }
 
 static void *demo_load_asmincsz(const char *fname, int *size)
@@ -318,13 +331,13 @@ void demo_execute()
 	free(tmp);
 
 	// part 4: beg
-	tmp = demo_load_asset("srtitle.up");
-	memcpy(pic, tmp, sizeof(pic));
+	tmp = demo_load_obk("beg-_pic.obk", &size);
+	memcpy(pic, tmp, size);
 	free(tmp);
 
 	// part 5: glenz
-	tmp = demo_load_asset("fc.uh");
-	memcpy(fc, tmp, sizeof(fc));
+	tmp = demo_load_obk("glenz-_fc.obk", &size);
+	memcpy(fc, tmp, size);
 	free(tmp);
 
 	// execute each part
