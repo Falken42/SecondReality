@@ -1,6 +1,6 @@
 #include "../../u2-port.h"
 
-#include "readp.c"
+#include "../../readp.c"
 
 extern char pic[];
 
