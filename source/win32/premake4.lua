@@ -15,6 +15,7 @@ solution "u2"
 		files {
 			"../jni/u2-port.c",
 			"../jni/platform-win32.c",
+			"../jni/readp.c",
 			"../jni/sin1024.c",
 			"../jni/u2/alku/main.c",
 			"../jni/u2/pam/outtaa.c",
@@ -24,7 +25,8 @@ solution "u2"
 			"../jni/u2/glenz/glenz-asm.c",
 			"../jni/u2/glenz/zoomer.c",
 			"../jni/u2/dots/dots-main.c",
-			"../jni/u2/dots/dots-asm.c"
+			"../jni/u2/dots/dots-asm.c",
+			"../jni/u2/end/end.c"
 		}
 		targetdir "."
 		if _ACTION == "vs2010" then

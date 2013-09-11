@@ -20,7 +20,7 @@ char  pal[769 + (768 * 64)];			// size from pal.inc plus 768*64 buffer in pam/in
 char  memblock[(65535 * 4) + 62486];	// sizes calced from parsed out.in[0-4] data
 
 // part4: beg
-char  pic[44575];				// size of raw data extracted from beg/_pic.obk
+char  pic[65536];				// enough size to hold the raw data which is extracted from beg/_pic.obk(44575) or end/_pic.obk(45884)
 
 // part5: glenz
 char  fc[64784];				// size of raw data extracted from glenz/_fc.obk
@@ -367,6 +367,20 @@ void demo_execute()
 	memset(vga_buffer, 0, 65536);
 
 	dots_main();
+
+	// part ?: end
+	tmp = demo_load_obk("end-_pic.obk", &size);
+	memcpy(pic, tmp, size);
+	free(tmp);
+
+	// HACK: again.
+    tw_opengraph();
+	demo_set_video_mode(320, 400, 320);
+	cop_start  = 0;
+	cop_scrl   = 0;
+	cop_dofade = 0;
+
+	end_main();
 }
 
 char *MK_FP(int seg, int off)
@@ -597,7 +611,7 @@ void ascrolltext(int scrl, int *text)
 {
 }
 
-// from beg/asm.asm
+// from beg/asm.asm, end/asm.asm
 void lineblit(char *buf, char *row)
 {
 	int zpl, zzz;
@@ -615,7 +629,7 @@ void lineblit(char *buf, char *row)
 	}
 }
 
-// from beg/asm.asm
+// from beg/asm.asm, end/asm.asm
 void setpalarea(char *pal, int start, int cnt)
 {
 	outportb(0x3C8, start);
@@ -633,7 +647,7 @@ int dis_indemo()
 int dis_musplus()
 {
 	// NIY
-	return 0;
+	return -999;
 }
 
 void dis_partstart()

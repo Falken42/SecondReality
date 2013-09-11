@@ -17,7 +17,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := secondreality-android
-LOCAL_SRC_FILES := u2-port.c platform-android.c sin1024.c u2/alku/main.c u2/pam/outtaa.c u2/pam/pam-asm.c u2/beg/beg.c u2/glenz/glenz-main.c u2/glenz/zoomer.c u2/glenz/glenz-asm.c u2/dots/dots-main.c u2/dots/dots-asm.c
+LOCAL_SRC_FILES := u2-port.c platform-android.c readp.c sin1024.c u2/alku/main.c u2/pam/outtaa.c u2/pam/pam-asm.c u2/beg/beg.c u2/glenz/glenz-main.c u2/glenz/zoomer.c u2/glenz/glenz-asm.c u2/dots/dots-main.c u2/dots/dots-asm.c u2/end/end.c
 LOCAL_ARM_MODE	:= arm
 LOCAL_CFLAGS	+= -march=armv7-a -mtune=cortex-a8 -mfloat-abi=softfp -mfpu=neon -g #-Os
 LOCAL_LDLIBS    := -llog -landroid -lEGL -lGLESv1_CM

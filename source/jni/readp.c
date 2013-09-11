@@ -2,6 +2,7 @@
 // ported from u2/{beg|end|endpic|jplogo}/readp.c
 // note: u2/{start|techno}/readp.c may have some differences
 //
+#include <stdint.h>
 #include <string.h>
 
 struct st_readp
