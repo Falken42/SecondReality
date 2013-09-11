@@ -208,7 +208,8 @@ static void *demo_load_obk(const char *fname, int *size)
 {
 	int len;
 	uint8_t *const obk = (uint8_t *)demo_load_assetsz(fname, &len), *res = NULL;
-	if (obk) {
+	if (obk)
+	{
 		// do an inverse operation of u2/util/doobj.c
 		const uint8_t *blk = obk;
 		res = (uint8_t *)malloc(len);
