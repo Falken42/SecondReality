@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <math.h>
-#include "..\dis\dis.h"
+#include "../../u2-port.h"
 
 extern char lensex0[];
 extern char lensex1[];
@@ -17,32 +17,31 @@ extern char lensexb[];
 FILE	*fp;
 int	pathstart2;
 #else 
-int	*pathdata1;
-int	*pathdata2;
-char	pathdata[13000];
+static int	*pathdata1;
+static int	*pathdata2;
+static char	pathdata[13000];
 #endif
 
-char *vram=(char *)0xA0000000L;
-int *lens1,*lens2,*lens3,*lens4;
+static int *lens1,*lens2,*lens3,*lens4;
 extern char *back;
-char *fade,*fade2;
+static char *fade,*fade2;
 extern char *rotpic;
 extern char *rotpic90;
-int	lenswid,lenshig,lensxs,lensys;
-char	palette[768];
+static int	lenswid,lenshig,lensxs,lensys;
+static char	palette[768];
 
-char	*shiftstatus=(char *)0x0417;
+// char	*shiftstatus=(char *)0x0417;
 
-int	waitb()
+static int	waitb()
 {
 	if(dis_indemo())
 	{
 		return(dis_waitb());
 	}
-	if(*shiftstatus&16) setborder(0);
-	while(!(inp(0x3da)&8));
-	while((inp(0x3da)&8));
-	if(*shiftstatus&16) setborder(24);
+	// if(*shiftstatus&16) setborder(0);
+	// while(!(inp(0x3da)&8));
+	// while((inp(0x3da)&8));
+	// if(*shiftstatus&16) setborder(24);
 	return(1);
 }
 
@@ -77,17 +76,18 @@ void	drawlens(int x0,int y0)
 
 void	setvmode(int m)
 {
-	_asm mov ax,m
-	_asm int 10h
+	// _asm mov ax,m
+	// _asm int 10h
 }
 
-int	firfade1[200];
-int	firfade2[200];
-int	firfade1a[200];
-int	firfade2a[200];
+static int	firfade1[200];
+static int	firfade2[200];
+static int	firfade1a[200];
+static int	firfade2a[200];
 
 void	part1(void)
 {
+	char far *vram=MK_FP(0x0a000,0);
 	int	x,y,xa,ya;
 	int	a,r,g,b,c,i;
 	int	frame=0;
@@ -275,7 +275,7 @@ void	part3(void)
 	setpalarea(palette,0,256);
 }
 
-main()
+lens_main()
 {
 	int	x,y,xa,ya;
 	int	a,r,g,b,c,i;
@@ -283,11 +283,11 @@ main()
 	char	*cp,*dp;
 	FILE	*f1;
 	dis_partstart();
-	rotpic=halloc(16384,4);
+	rotpic=calloc(16384,4);
 	if(!rotpic) exit(1);
-	fade=halloc(16000,1);
+	fade=calloc(16000,1);
 	if(!fade) exit(1);
-	fade2=halloc(20000,1);
+	fade2=calloc(20000,1);
 	if(!fade2) exit(1);
 	setvmode(0x13);
 	outp(0x3c8,0);
@@ -391,4 +391,8 @@ main()
 	putw(pathstart2,fp);
 	fclose(fp);
 	#endif
+
+	free(rotpic);
+	free(fade);
+	free(fade2);
 }

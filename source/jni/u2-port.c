@@ -28,6 +28,16 @@ char  backpal[16 * 3];
 char  lightshift;
 int   demomode[3];
 
+// part11: lens
+// note from u2/lens/makefile: after lensexb, there must be 4K of data (filler) for 64K overflow
+char lensex0[215]; // lens/_lensex0.obk
+char lensex1[19588]; // lens/_lensex1.obk
+char lensex2[6860]; // lens/_lensex2.obk
+char lensex3[1538]; // lens/_lensex3.obk
+char lensex4[6252]; // lens/_lensex4.obk
+char lensexp[18864]; // lens/_lensexp.obk
+char lensexb[64784 + 4224]; // lens/_lensexb.obk + lens/_filler.obk
+
 // internal variables (for timing, vga emulation, etc)
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time, dis_partid = 0;
@@ -301,7 +311,7 @@ static void *demo_append_asminc(void *data, const char *fname, int *size)
 
 void demo_execute()
 {
-	int size;
+	int size, size2;
 	void *tmp;
 
 	// initialize internal state
@@ -341,6 +351,32 @@ void demo_execute()
 	memcpy(fc, tmp, size);
 	free(tmp);
 
+	// part11: lens
+	tmp = demo_load_obk("lens-_lensex0.obk", &size);
+	memcpy(lensex0, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensex1.obk", &size);
+	memcpy(lensex1, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensex2.obk", &size);
+	memcpy(lensex2, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensex3.obk", &size);
+	memcpy(lensex3, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensex4.obk", &size);
+	memcpy(lensex4, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensexp.obk", &size);
+	memcpy(lensexp, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_lensexb.obk", &size);
+	memcpy(lensexb, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("lens-_filler.obk", &size2);
+	memcpy(&lensexb[size], tmp, size2);
+	free(tmp);
+
 	// execute each part
 	alku_main();
 
@@ -357,6 +393,7 @@ void demo_execute()
 
 	beg_main();
 //	glenz_main();
+//	lens_main();
 
 	// EVEN MORE HACK:
 	demo_set_video_mode(320, 200, 320);
