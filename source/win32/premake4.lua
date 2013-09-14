@@ -10,7 +10,7 @@ solution "u2"
 	configurations {"debug", "release"}
 	project "u2"
 		kind "WindowedApp"
-		flags {"WinMain"}
+		flags {"WinMain", "StaticRuntime"}
 		language "C"
 		files {
 			"../jni/u2-port.c", "../jni/platform-win32.c", "../jni/readp.c", "../jni/sin1024.c",

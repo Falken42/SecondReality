@@ -392,8 +392,8 @@ void demo_execute()
 	cop_dofade = 0;
 
 	beg_main();
-//	glenz_main();
-//	lens_main();
+
+	dis_partstart(); // glenz_main();
 
 	// EVEN MORE HACK:
 	demo_set_video_mode(320, 200, 320);
@@ -401,11 +401,25 @@ void demo_execute()
 	outp(0x3C5, 1);
 	outp(0x3C4, 4);
 	outp(0x3C5, 8);
-	memset(vga_buffer, 0, 65536);
+
+	dis_partstart(); // TUNNELI.EXE
+	dis_partstart(); // TECHNO.EXE
+	dis_partstart(); // PANICEND.EXE
+	dis_partstart(); // MNTSCRL.EXE
+	dis_partstart(); // DDSTARS.EXE
+
+	dis_partstart(); // lens_main();
+
+	dis_partstart(), memset(vga_buffer, 0, 65536); // PLZPART.EXE
 
 	dots_main();
 
-	// part ?: end
+	dis_partstart(); // RAYSCRL.EXE
+	dis_partstart(); // 3DSINFLD.EXE
+	dis_partstart(); // JPLOGO.EXE
+	dis_partstart(); // U2E.EXE
+
+	// part 18: end
 	tmp = demo_load_obk("end-_pic.obk", &size);
 	memcpy(pic, tmp, size);
 	free(tmp);
@@ -418,6 +432,9 @@ void demo_execute()
 	cop_dofade = 0;
 
 	end_main();
+
+	dis_partstart(); // CRED.EXE
+	dis_partstart(); // ENDSCRL.EXE
 }
 
 char *MK_FP(int seg, int off)
@@ -666,7 +683,7 @@ void lineblit(char *buf, char *row)
 	}
 }
 
-// from beg/asm.asm, end/asm.asm
+// from beg/asm.asm, lens/asm.asm, end/asm.asm
 void setpalarea(char *pal, int start, int cnt)
 {
 	outportb(0x3C8, start);

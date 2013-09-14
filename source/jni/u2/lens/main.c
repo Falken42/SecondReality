@@ -17,12 +17,12 @@ extern char lensexb[];
 FILE	*fp;
 int	pathstart2;
 #else 
-static int	*pathdata1;
-static int	*pathdata2;
-static char	pathdata[13000];
+static int16_t	*pathdata1;
+static int16_t	*pathdata2;
+// char	pathdata[13000];
 #endif
 
-static int *lens1,*lens2,*lens3,*lens4;
+static int16_t *lens1,*lens2,*lens3,*lens4;
 extern char *back;
 static char *fade,*fade2;
 extern char *rotpic;
@@ -101,7 +101,7 @@ void	part1(void)
 		firfade1[b]=170*64+(100-b)*50;
 		firfade2[b]=170*64+(100-b)*50;
 	}
-	if(dis_musplus>-30) while(!dis_exit() && dis_musplus()<-6) ;
+	if(dis_musplus()>-30) while(!dis_exit() && dis_musplus()<-6) ;
 	dis_waitb();
 	dis_setmframe(0);
 	while(!dis_exit() && frame<300)
@@ -293,15 +293,15 @@ lens_main()
 	outp(0x3c8,0);
 	for(a=0;a<768;a++) outp(0x3c9,0);
 	#ifndef SAVEPATH
-	a=*(int *)(lensexp+2);
-	pathdata1=(int *)(lensexp+4);
-	pathdata2=(int *)(lensexp+4+2*a);
+	a=*(int16_t *)(lensexp+2);
+	pathdata1=(int16_t *)(lensexp+4);
+	pathdata2=(int16_t *)(lensexp+4+2*a);
 	#endif
 	memcpy(palette,lensexb+16,768);
-	back=(char *)((long)lensexb+((768+16)/16)*65536L);
+	back=lensexb+(768+16); // back=(char *)((long)lensexb+((768+16)/16)*65536L);
 	memcpy(back+64000,back+64000-1536,1536);
-	lenswid=*(int *)(lensex0+0);
-	lenshig=*(int *)(lensex0+2);
+	lenswid=*(int16_t *)(lensex0+0);
+	lenshig=*(int16_t *)(lensex0+2);
 	cp=lensex0+4;
 	lensxs=lenswid/2;
 	lensys=lenshig/2;
@@ -377,7 +377,7 @@ lens_main()
 	#endif
 
 	if(!dis_exit()) part1();
-	while(!dis_exit() && dis_musplus()<-20) ;
+	// TODO: while(!dis_exit() && dis_musplus()<-20) ;
 	dis_waitb();
 	if(!dis_exit()) part2();
 	#ifdef SAVEPATH

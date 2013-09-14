@@ -19,7 +19,7 @@ DOWORD 	MACRO	diadd,siadd
 	ENDM				;=21
 */
 
-void dorow(int *lens, unsigned u, int y, int bits)
+void dorow(int16_t *lens, unsigned u, int y, int bits)
 {
 /*
 PUBLIC _dorow
@@ -94,7 +94,7 @@ _dorow	ENDP
 */
 }
 
-void dorow2(int *lens, unsigned u, int y, int bits)
+void dorow2(int16_t *lens, unsigned u, int y, int bits)
 {
 /*
 PUBLIC _dorow2
@@ -141,7 +141,7 @@ _dorow2	ENDP
 */
 }
 
-void dorow3(int *lens, unsigned u, int y, int bits)
+void dorow3(int16_t *lens, unsigned u, int y, int bits)
 {
 /*
 PUBLIC _dorow3
