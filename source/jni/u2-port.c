@@ -44,7 +44,7 @@ static int dis_sync_val, dis_sync_time, dis_partid = 0;
 static void (*dis_routine[3])();
 static unsigned int vga_width, vga_height, vga_stride, vga_start;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
-static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_cur_plane, vga_chain4, vga_horiz_pan;
+static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_plane_mask, vga_chain4, vga_horiz_pan;
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -93,11 +93,11 @@ static void demo_init()
 	}
 
 	// init some VGA register defaults
-	vga_chain4	  = 0x08;
-	vga_attr_reg  = 0;
-	vga_start	  = 0;
-	vga_cur_plane = 0;
-	vga_horiz_pan = 0;
+	vga_chain4	   = 0x08;
+	vga_attr_reg   = 0;
+	vga_start	   = 0;
+	vga_plane_mask = 0x01;
+	vga_horiz_pan  = 0;
 
 	// initialize demo state
 	frame_count     = 0;
@@ -447,22 +447,33 @@ char *MK_FP(int seg, int off)
 	return (char *)(seg + (off - seg));
 }
 
+static void vga_flush_buffer()
+{
+#if 1
+	if (vga_plane_mask & 0x01) memcpy(vga_plane[0], vga_buffer, 65536);
+	if (vga_plane_mask & 0x02) memcpy(vga_plane[1], vga_buffer, 65536);
+	if (vga_plane_mask & 0x04) memcpy(vga_plane[2], vga_buffer, 65536);
+	if (vga_plane_mask & 0x08) memcpy(vga_plane[3], vga_buffer, 65536);
+#else
+	const uint8_t plane = ilog2(vga_plane_mask);
+	memcpy(vga_plane[plane], vga_buffer, 65536);
+#endif
+}
+
 static void vga_set_plane(uint8_t mask)
 {
-	// multiple plane writes currently not supported
-//	if (bitcount(mask) > 1)
-//		LOGI("vga_set_plane: VGA plane change to multiple planes [mask=0x%02X]", mask);
-
 	// determine new plane, and check if different
-	const uint8_t new_plane = ilog2(mask);
-	if (vga_cur_plane != new_plane)
+	if (vga_plane_mask != mask)
 	{
-		// swap the current VGA buffer out with the new plane's buffer
-		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
+		const uint8_t new_plane = ilog2(mask);
+
+		vga_flush_buffer();
+
+		// only allow reading from the first plane
 		memcpy(vga_buffer, vga_plane[new_plane], 65536);
 
-		// store new plane
-		vga_cur_plane = new_plane;
+		// store new plane mask
+		vga_plane_mask = mask;
 	}
 }
 
@@ -752,7 +763,7 @@ int dis_exit()
 	if ((now - last_frame_time) >= 16667)
 	{
 		// copy current VGA buffer to the proper plane
-		memcpy(vga_plane[vga_cur_plane], vga_buffer, 65536);
+		vga_flush_buffer();
 
 		// handle copper scrolling (func: copper1, alku/copper.asm)
 		outport(0x3D4, ((cop_start & 0x00FF) << 8) | 0x0D);
