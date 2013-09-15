@@ -4,9 +4,6 @@
 //
 #include "../../u2-port.h"
 
-// should be placed in u2-port.h?
-extern void outp(unsigned short port, unsigned char val);
-
 #define MAXDOTS 1024
 
 #define BOTTOM 8000
@@ -135,9 +132,9 @@ void drawdots(void)
 void setpalette(const uint8_t *pal)
 {
 	int cx = 768;
-	outp(0x3c8, 0);
+	outportb(0x3c8, 0);
 	while (cx--)
-		outp(0x3c9, *pal++);
+		outportb(0x3c9, *pal++);
 }
 
 int face[] =

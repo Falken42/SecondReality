@@ -10,7 +10,7 @@ This is a port of Second Reality by Future Crew updated to run on present-day pl
 - Part 3 (pam): Screen flash and fade renders fully, explosion effect partially works.  Bugs: Graphic corruption, and incorrect page flipping.
 - Part 4 (beg): Renders and executes fully.
 - Part 5 (glenz): Executes fully, but does not render at all.  Currently skipped.
-- Part 13 (dots): Renders and executes fully.
+- Part 14 (dots): Renders and executes fully.
 - No audio playback code has been written yet.
 - Timing and synchronization is not perfect.
 

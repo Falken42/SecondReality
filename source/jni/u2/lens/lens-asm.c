@@ -3,11 +3,15 @@
 // note: setpalarea() resides in u2-port.c
 //
 #include <stdint.h>
+#include <string.h>
+#include "../../u2-port.h"
 
 char *back;
 char *rotpic;
 char *rotpic90;
 
+void dorow(int16_t *lens, int u, int y, int bits)
+{
 /*
 DOWORD 	MACRO	diadd,siadd
 	mov	bx,ds:[si+(siadd)]	;4
@@ -17,11 +21,7 @@ DOWORD 	MACRO	diadd,siadd
 	or	ax,dx			;2
 	mov	es:[bp+(diadd)],ax	;5
 	ENDM				;=21
-*/
 
-void dorow(int16_t *lens, unsigned u, int y, int bits)
-{
-/*
 PUBLIC _dorow
 _dorow	PROC FAR
 	push 	bp
@@ -94,7 +94,7 @@ _dorow	ENDP
 */
 }
 
-void dorow2(int16_t *lens, unsigned u, int y, int bits)
+void dorow2(int16_t *lens, int u, int y, int bits)
 {
 /*
 PUBLIC _dorow2
@@ -141,7 +141,7 @@ _dorow2	ENDP
 */
 }
 
-void dorow3(int16_t *lens, unsigned u, int y, int bits)
+void dorow3(int16_t *lens, int u, int y, int bits)
 {
 /*
 PUBLIC _dorow3
@@ -184,165 +184,101 @@ _dorow3	ENDP
 
 void inittwk(void)
 {
-/*
-PUBLIC _inittwk
-_inittwk PROC FAR
-	push	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	;clear palette
-	mov	dx,3c8h
-	xor	al,al
-	out	dx,al
-	inc	dx
-	mov	cx,768
-@@1:	out	dx,al
-	loop	@@1
-	;400 rows
-	mov	dx,3d4h
-	mov	ax,00009h
-	out	dx,ax
-	;tweak
-	mov	ax,00014h
-	out	dx,ax
-	mov	ax,0e317h
-	out	dx,ax
-	mov	dx,3c4h
-	mov	ax,0604h
-	out	dx,ax
-	;
-	mov	dx,3c4h
-	mov	ax,0f02h
-	out	dx,ax
-	mov	ax,0a000h
-	mov	es,ax
-	xor	di,di
-	mov	cx,32768
-	xor	ax,ax
-	rep	stosw
-	;
-	;set 4 x vertical
-	mov	dx,3d4h
-	mov	al,9
-	out	dx,al
-	inc	dx
-	in	al,dx
-	and	al,not 31
-	or	al,3
-	out	dx,al
-	;
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-_inittwk ENDP
-*/
+	int i;
+
+	// clear palette
+	outportb(0x3c8, 0);
+	for (i = 0; i < 768; i++)
+		outportb(0x3c9, 0);
+
+	// 400 rows
+	outport(0x3d4, 0x0009);
+
+	// tweak
+	outport(0x3d4, 0x0014);
+	outport(0x3d4, 0xe317);
+	outport(0x3c4, 0x0604);
+
+	outport(0x3c4, 0x0f02);
+	memset(MK_FP(0x0a000, 0), 0, 65536);
+
+	// set 4 x vertical
+	outportb(0x3d4, 9);
+	outportb(0x3d5, (inportb(0x3d5) & ~31) | 3);
 }
 
-/*
-ALIGN 16
-xpos	dd	0
-ypos	dd	0
-xadd	dd	0
-yadd	dd	0
+#define ZOOMXW 160
+#define ZOOMYW 100
 
-ZOOMXW	equ	160
-ZOOMYW	equ	100
-*/
+static void xchg(int *a, int *b)
+{
+	const int c = *a;
+	*a = *b;
+	*b = c;
+}
 
 void rotate(int x, int y, int xa, int ya)
 {
+	static int moda2[ZOOMXW / 4], moda6[ZOOMXW / 4];
+	static int modb2[ZOOMXW / 4], modb6[ZOOMXW / 4];
+
+	int xpos = x << 16, ypos = y << 16, xadd, yadd;
+	int eax = xa << 6, ebx = ya << 6, ecx = (eax < 0) ? -eax : eax, edx = (ebx < 0) ? -ebx : ebx;
+	int esi, edi, zzz, rept;
+	char *ds = rotpic, *const es = MK_FP(0x0a000, 0);
+
+	if (ecx > edx)
+	{
+		ds = rotpic90;
+		xchg(&eax, &ebx);
+		eax = -eax;
+		ecx = xpos;
+		edx = ypos;
+		xchg(&ecx, &edx);
+		ecx = -ecx;
+		xpos = ecx;
+		ypos = edx;
+	}
+
+	xadd = eax;
+	yadd = ebx;
+
 /*
-PUBLIC _rotate
-_rotate PROC FAR
-	push	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	
-	mov	ax,[bp+6]
-	shl	eax,16
-	mov	cs:xpos,eax
-	mov	ax,[bp+8]
-	shl	eax,16
-	mov	cs:ypos,eax
-	
-	mov	ax,[bp+12]
-	cwde
-	shl	eax,6
-	mov	ebx,eax
-	mov	ax,[bp+10]
-	cwde
-	shl	eax,6
-	
-	mov	ecx,eax
-	mov	edx,ebx
-	
-	mov	ds,cs:_rotpic[2]
-	cmp	ecx,0
-	jge	@@s1
-	neg	ecx
-@@s1:	cmp	edx,0
-	jge	@@s2
-	neg	edx
-@@s2:	cmp	ecx,edx
-	jle	@@s3
-	
-	mov	ds,cs:_rotpic90[2]
-	xchg	eax,ebx
-	neg	eax
-	mov	ecx,cs:xpos
-	mov	edx,cs:ypos
-	xchg	ecx,edx
-	neg	ecx
-	mov	cs:xpos,ecx
-	mov	cs:ypos,edx
-	
-@@s3:	mov	cs:xadd,eax
-	mov	cs:yadd,ebx
-	
 	xor	ax,ax
-	mov	cx,word ptr cs:yadd[0]
-	mov	dx,word ptr cs:xadd[0]
+	mov	cx,LOWORD(yadd)
 	mov	bl,byte ptr cs:yadd[2]
+	mov	dx,LOWORD(xadd)
+	neg	dx
 	mov	bh,byte ptr cs:xadd[2]
 	neg	bh
-	neg	dx
 	sbb	bh,0
-	xor	si,si
-	xor	di,di
-	;si=lowx,di=lowy,ax=y/x
-	;cx=addx,dx=addy,bx=yah/xah
-	zzz=0
-	REPT	ZOOMXW/4
-	add	si,cx
-	adc	al,bl
-	add	di,dx
-	adc	ah,bh
-	mov	word ptr cs:[OFFSET @@moda+zzz+2],ax
-	add	si,cx
-	adc	al,bl
-	add	di,dx
-	adc	ah,bh
-	mov	word ptr cs:[OFFSET @@modb+zzz+2],ax
-	add	si,cx
-	adc	al,bl
-	add	di,dx
-	adc	ah,bh
-	mov	word ptr cs:[OFFSET @@moda+zzz+6],ax
-	add	si,cx
-	adc	al,bl
-	add	di,dx
-	adc	ah,bh
-	mov	word ptr cs:[OFFSET @@modb+zzz+6],ax
-	zzz=zzz+13
-	ENDM
+si = 0;
+di = 0;
+	for (rept = 0; rept < ZOOMXW / 4; rept++)
+	{
+		add	si,cx
+		adc	al,bl
+		add	di,dx
+		adc	ah,bh
+		moda2[rept] = ax;
+		add	si,cx
+		adc	al,bl
+		add	di,dx
+		adc	ah,bh
+		modb2[rept] = ax;
+		add	si,cx
+		adc	al,bl
+		add	di,dx
+		adc	ah,bh
+		moda6[rept] = ax;
+		add	si,cx
+		adc	al,bl
+		add	di,dx
+		adc	ah,bh
+		modb6[rept] = ax;
+	}
 	
-	;aspect ratio
+	// aspect ratio
 	mov	eax,307
 	mul	dword ptr cs:xadd
 	sar	eax,8
@@ -351,54 +287,31 @@ _rotate PROC FAR
 	mul	dword ptr cs:yadd
 	sar	eax,8
 	mov	cs:yadd,eax
-	
-	mov	ax,0a000h
-	mov	es,ax
-	mov	di,-1000h
-	
-	mov	cx,ZOOMYW
-@@2:	mov	ebx,cs:ypos
-	add	ebx,cs:yadd
-	mov	cs:ypos,ebx
-	shr	ebx,8
-	mov	eax,cs:xpos
-	add	eax,cs:xadd
-	mov	cs:xpos,eax
-	shr	eax,16
-	mov	bl,al
-	mov	si,bx
-	;
-	mov	dx,3c4h
-	mov	ax,0302h
-	out	dx,ax
-@@moda:	zzz=1000h
-	REPT	ZOOMXW/4
-	mov	al,ds:[si+1234h]	;4
-	mov	ah,ds:[si+1234h]	;4
-	mov	es:[di+zzz],ax		;5
-	zzz=zzz+2
-	ENDM
-	mov	dx,3c4h
-	mov	ax,0c02h
-	out	dx,ax
-@@modb:	zzz=1000h
-	REPT	ZOOMXW/4
-	mov	al,ds:[si+1234h]	;4
-	mov	ah,ds:[si+1234h]	;4
-	mov	es:[di+zzz],ax		;5
-	zzz=zzz+2
-	ENDM
-	;
-	add	di,80
-	dec	cx
-	jz	@@1
-	jmp	@@2
-@@1:	
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-_rotate ENDP
 */
+
+	edi = -0x1000;
+	for (ecx = ZOOMYW; ecx; ecx--)
+	{
+		xpos += xadd;
+		ypos += yadd;
+		esi = ((ypos >> 8) & 0xf0) | ((xpos >> 16) & 0x0f);
+
+		outport(0x3c4, 0x0302);
+		zzz = 0x1000;
+		for (rept = 0; rept < ZOOMXW / 4; rept++)
+		{
+			es[edi + zzz++] = ds[esi + moda2[rept]];
+			es[edi + zzz++] = ds[esi + moda6[rept]];
+		}
+
+		outport(0x3c4, 0x0c02);
+		zzz = 0x1000;
+		for (rept = 0; rept < ZOOMXW / 4; rept++)
+		{
+			es[edi + zzz++] = ds[esi + modb2[rept]];
+			es[edi + zzz++] = ds[esi + modb6[rept]];
+		}
+
+		edi += 80;
+	}
 }

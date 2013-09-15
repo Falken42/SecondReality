@@ -101,7 +101,7 @@ void	part1(void)
 		firfade1[b]=170*64+(100-b)*50;
 		firfade2[b]=170*64+(100-b)*50;
 	}
-	if(dis_musplus()>-30) while(!dis_exit() && dis_musplus()<-6) ;
+	// TODO: if(dis_musplus()>-30) while(!dis_exit() && dis_musplus()<-6) ;
 	dis_waitb();
 	dis_setmframe(0);
 	while(!dis_exit() && frame<300)
@@ -117,7 +117,7 @@ void	part1(void)
 					x=firfade1[y]>>6;
 					cp[x]=dp[x];
 					x=firfade2[y]>>6;
-					cp[x]=dp[x];
+					if(x>=0)cp[x]=dp[x];
 					firfade1[y]+=firfade1a[y];
 					firfade2[y]+=firfade2a[y];
 					cp+=320;

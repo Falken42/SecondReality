@@ -28,7 +28,7 @@ char  backpal[16 * 3];
 char  lightshift;
 int   demomode[3];
 
-// part11: lens
+// part12: lens
 // note from u2/lens/makefile: after lensexb, there must be 4K of data (filler) for 64K overflow
 char lensex0[215]; // lens/_lensex0.obk
 char lensex1[19588]; // lens/_lensex1.obk
@@ -351,7 +351,7 @@ void demo_execute()
 	memcpy(fc, tmp, size);
 	free(tmp);
 
-	// part11: lens
+	// part12: lens
 	tmp = demo_load_obk("lens-_lensex0.obk", &size);
 	memcpy(lensex0, tmp, size);
 	free(tmp);
@@ -395,6 +395,7 @@ void demo_execute()
 
 #if 1
 	dis_partstart();
+	dis_partstart();
 #else
 	glenz_main();
 #endif
@@ -412,10 +413,19 @@ void demo_execute()
 	dis_partstart(); // MNTSCRL.EXE
 	dis_partstart(); // DDSTARS.EXE
 
-	dis_partstart(); // lens_main();
+	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
+	lens_main();
 
-	dis_partstart(), memset(vga_buffer, 0, 65536); // PLZPART.EXE
+	dis_partstart(); // PLZPART.EXE
 
+	// USUAL HACK: lens changes video mode during execution
+	demo_set_video_mode(320, 200, 320);
+	outp(0x3C4, 2);
+	outp(0x3C5, 1);
+	outp(0x3C4, 4);
+	outp(0x3C5, 8);
+
+	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	dots_main();
 
 	dis_partstart(); // RAYSCRL.EXE
@@ -423,7 +433,7 @@ void demo_execute()
 	dis_partstart(); // JPLOGO.EXE
 	dis_partstart(); // U2E.EXE
 
-	// part 18: end
+	// part 19: end
 	tmp = demo_load_obk("end-_pic.obk", &size);
 	memcpy(pic, tmp, size);
 	free(tmp);
