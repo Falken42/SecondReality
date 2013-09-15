@@ -627,8 +627,11 @@ void outportb(unsigned short int port, unsigned char val)
 
 				case 0x09:
 					// maximum scan line register
+					// "a non-zero value in this field will cause each scan line to be repeated by the value of this field + 1"
+					// http://www.stanford.edu/class/cs140/projects/pintos/specs/freevga/vga/crtcreg.htm#09
 					vga_max_scan = val & 0x1F;
 					LOGI("vga_max_scan = %d", vga_max_scan);
+					demo_set_video_mode(vga_width, 400 / (vga_max_scan + 1), vga_stride); // TODO: figure out where the 400 came from
 					break;
 
 				case 0x0C:
@@ -922,12 +925,12 @@ void tw_opengraph()
 	switch (dis_partid)
 	{
 		case 1:
-			// alku: 320x372 visible, with 704 pixel stride (176*4)
-			demo_set_video_mode(320, 372, 704);
 			outport(0x3D4, 0x0014);		// crtc long off
 			outport(0x3D4, 0xE317);		// crtc byte on
 			outport(0x3D4, 0x0009);		// 400 (?)
 			outport(0x3D4, 0x5813);		// 640 wide (?)
+			// alku: 320x372 visible, with 704 pixel stride (176*4)
+			demo_set_video_mode(320, 372, 704);
 			break;
 
 		case 3:
