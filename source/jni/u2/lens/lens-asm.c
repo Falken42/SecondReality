@@ -243,73 +243,48 @@ void rotate(int x, int y, int xa, int ya)
 	xadd = eax;
 	yadd = ebx;
 
-/*
-	xor	ax,ax
-	mov	cx,LOWORD(yadd)
-	mov	bl,byte ptr cs:yadd[2]
-	mov	dx,LOWORD(xadd)
-	neg	dx
-	mov	bh,byte ptr cs:xadd[2]
-	neg	bh
-	sbb	bh,0
-si = 0;
-di = 0;
+	eax = esi = edi = 0;
 	for (rept = 0; rept < ZOOMXW / 4; rept++)
 	{
-		add	si,cx
-		adc	al,bl
-		add	di,dx
-		adc	ah,bh
-		moda2[rept] = ax;
-		add	si,cx
-		adc	al,bl
-		add	di,dx
-		adc	ah,bh
-		modb2[rept] = ax;
-		add	si,cx
-		adc	al,bl
-		add	di,dx
-		adc	ah,bh
-		moda6[rept] = ax;
-		add	si,cx
-		adc	al,bl
-		add	di,dx
-		adc	ah,bh
-		modb6[rept] = ax;
+		esi += yadd;
+		edi -= xadd;
+		moda2[rept] = ((edi >> 8) & 0xff00) | ((esi >> 16) & 0x00ff);
+		esi += yadd;
+		edi -= xadd;
+		modb2[rept] = ((edi >> 8) & 0xff00) | ((esi >> 16) & 0x00ff);
+		esi += yadd;
+		edi -= xadd;
+		moda6[rept] = ((edi >> 8) & 0xff00) | ((esi >> 16) & 0x00ff);
+		esi += yadd;
+		edi -= xadd;
+		modb6[rept] = ((edi >> 8) & 0xff00) | ((esi >> 16) & 0x00ff);
 	}
-	
+
 	// aspect ratio
-	mov	eax,307
-	mul	dword ptr cs:xadd
-	sar	eax,8
-	mov	cs:xadd,eax
-	mov	eax,307
-	mul	dword ptr cs:yadd
-	sar	eax,8
-	mov	cs:yadd,eax
-*/
+	xadd = (307 * xadd) >> 8;
+	yadd = (307 * yadd) >> 8;
 
 	edi = -0x1000;
 	for (ecx = ZOOMYW; ecx; ecx--)
 	{
 		xpos += xadd;
 		ypos += yadd;
-		esi = ((ypos >> 8) & 0xf0) | ((xpos >> 16) & 0x0f);
+		esi = ((ypos >> 8) & 0xff00) | ((xpos >> 16) & 0x00ff);
 
 		outport(0x3c4, 0x0302);
 		zzz = 0x1000;
 		for (rept = 0; rept < ZOOMXW / 4; rept++)
 		{
-			es[edi + zzz++] = ds[esi + moda2[rept]];
-			es[edi + zzz++] = ds[esi + moda6[rept]];
+			es[(edi + zzz++) & 0xffff] = ds[(esi + moda2[rept]) & 0xffff];
+			es[(edi + zzz++) & 0xffff] = ds[(esi + moda6[rept]) & 0xffff];
 		}
 
 		outport(0x3c4, 0x0c02);
 		zzz = 0x1000;
 		for (rept = 0; rept < ZOOMXW / 4; rept++)
 		{
-			es[edi + zzz++] = ds[esi + modb2[rept]];
-			es[edi + zzz++] = ds[esi + modb6[rept]];
+			es[(edi + zzz++) & 0xffff] = ds[(esi + modb2[rept]) & 0xffff];
+			es[(edi + zzz++) & 0xffff] = ds[(esi + modb6[rept]) & 0xffff];
 		}
 
 		edi += 80;
