@@ -403,7 +403,7 @@ glenz_main()
     dis_setcopper(0,copper);
     while(frame<7000 && !dis_exit())
     {
-	LOGI("--- glenz: frame=%d", frame);
+//	LOGI("--- glenz: frame=%d", frame);
         a=dis_musplus(); if(a<0 && a>-16) break;
         
 	repeat=dis_waitb();

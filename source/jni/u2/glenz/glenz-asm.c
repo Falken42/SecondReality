@@ -7,7 +7,10 @@
 void testasm()
 {
 	// hackhackhack
-	outport(0x3C4, 0x0408);
+	outport(0x3C4, 0x0804);		// disable chain-4
+	outport(0x3C4, 0x0102);		// write to plane 1
+	outport(0x3D4, 0xBF06);		// 200 scanlines (see: http://wiki.osdev.org/VGA_Hardware#Port_0x3C4.2C_0x3CE.2C_0x3D4 )
+	outport(0x3D4, 0x1F07);
 }
 
 //

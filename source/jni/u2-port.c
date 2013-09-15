@@ -42,9 +42,9 @@ char lensexb[64784 + 4224]; // lens/_lensexb.obk + lens/_filler.obk
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time, dis_partid = 0;
 static void (*dis_routine[3])();
-static unsigned int vga_width, vga_height, vga_stride, vga_start;
+static unsigned int vga_width, vga_height, vga_stride, vga_start, vga_vert_total;
 static uint8_t vga_pal[768], *vga_plane[4], *vga_buffer;
-static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_plane_mask, vga_chain4, vga_horiz_pan;
+static uint8_t vga_pal_index, vga_pal_comp, vga_adr_reg, vga_attr_reg, vga_plane_mask, vga_chain4, vga_horiz_pan, vga_max_scan;
 
 // round value to next power of two (or return same if already a power of two)
 static int nextPow2(int val)
@@ -377,6 +377,7 @@ void demo_execute()
 	memcpy(&lensexb[size], tmp, size2);
 	free(tmp);
 
+#if 1
 	// execute each part
 	alku_main();
 
@@ -392,13 +393,9 @@ void demo_execute()
 	cop_dofade = 0;
 
 	beg_main();
-
-#if 1
 	dis_partstart();
 	dis_partstart();
-#else
-	glenz_main();
-#endif
+//	glenz_main();
 
 	// EVEN MORE HACK:
 	demo_set_video_mode(320, 200, 320);
@@ -449,6 +446,20 @@ void demo_execute()
 
 	dis_partstart(); // CRED.EXE
 	dis_partstart(); // ENDSCRL.EXE
+#else
+	// test just beg and glenz parts
+	dis_partid = 3;
+
+	// HACK: until we can properly determine the resolution from the VGA registers
+    tw_opengraph();
+	demo_set_video_mode(320, 400, 320);
+	cop_start  = 0;		// <-- this is a hack too. beg_main() probably initializes these on the VGA though.
+	cop_scrl   = 0;
+	cop_dofade = 0;
+
+	beg_main();
+	glenz_main();
+#endif
 }
 
 char *MK_FP(int seg, int off)
@@ -491,6 +502,8 @@ static void vga_set_plane(uint8_t mask)
 	}
 }
 
+// http://bespin.org/~qz/pc-gpe/vgaregs.txt
+// http://www.stanford.edu/class/cs140/projects/pintos/specs/freevga/vga/crtcreg.htm
 void outportb(unsigned short int port, unsigned char val)
 {
 	switch (port)
@@ -595,6 +608,29 @@ void outportb(unsigned short int port, unsigned char val)
 			// vga data register write, using previously set address
 			switch (vga_adr_reg)
 			{
+				case 0x06:
+					// vertical total register
+					vga_vert_total &= 0xFF00;
+					vga_vert_total |= val;
+					LOGI("vertical: vga_vert_total = %d", vga_vert_total);
+					demo_set_video_mode(vga_width, (vga_vert_total + 2) / 2.235, vga_stride);
+					break;
+
+				case 0x07:
+					// overflow register
+					vga_vert_total &= 0x00FF;
+					vga_vert_total |= ((int)val & 0x01) << 8;
+					vga_vert_total |= ((int)val & 0x20) << (9 - 5);
+					LOGI("overflow: vga_vert_total = %d", vga_vert_total);
+					demo_set_video_mode(vga_width, (vga_vert_total + 2) / 2.235, vga_stride);
+					break;
+
+				case 0x09:
+					// maximum scan line register
+					vga_max_scan = val & 0x1F;
+					LOGI("vga_max_scan = %d", vga_max_scan);
+					break;
+
 				case 0x0C:
 					// start address high
 					vga_start &= 0x00FF;
@@ -888,6 +924,10 @@ void tw_opengraph()
 		case 1:
 			// alku: 320x372 visible, with 704 pixel stride (176*4)
 			demo_set_video_mode(320, 372, 704);
+			outport(0x3D4, 0x0014);		// crtc long off
+			outport(0x3D4, 0xE317);		// crtc byte on
+			outport(0x3D4, 0x0009);		// 400 (?)
+			outport(0x3D4, 0x5813);		// 640 wide (?)
 			break;
 
 		case 3:
