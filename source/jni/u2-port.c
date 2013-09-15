@@ -393,7 +393,11 @@ void demo_execute()
 
 	beg_main();
 
-	dis_partstart(); // glenz_main();
+#if 1
+	dis_partstart();
+#else
+	glenz_main();
+#endif
 
 	// EVEN MORE HACK:
 	demo_set_video_mode(320, 200, 320);
@@ -712,13 +716,39 @@ int dis_indemo()
 int dis_musplus()
 {
 	// NIY
-	return -999;
+	// needs > -19 for glenz, but < -15 for end
+	return -16;
 }
 
 void dis_partstart()
 {
+	static const char *part_name[] = {
+		"<null>",
+		"alku",
+		"u2a",
+		"pam",
+		"beg",
+		"glenz",
+		"glenz2",
+		"tunneli",
+		"techno",
+		"panicend",
+		"mntscrl",
+		"ddstars",
+		"lens",
+		"plzpart",
+		"dots",
+		"rayscrl",
+		"3dsinfld",
+		"jplogo",
+		"u2e",
+		"end",
+		"cred",
+		"endscrl"
+	};
+
 	dis_partid++;
-	LOGI("---------- starting next part: id=%d ----------", dis_partid);
+	LOGI("---------- starting next part: %s (id=%d) ----------", part_name[dis_partid], dis_partid);
 }
 
 int dis_waitb()
