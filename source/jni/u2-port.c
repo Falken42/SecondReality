@@ -28,6 +28,10 @@ char  backpal[16 * 3];
 char  lightshift;
 int   demomode[3];
 
+// part6: tunneli
+char tun[35328]; // size of tunneli/tunnel.dat
+char sini[12292]; // size of tunneli/sinit.dat
+
 // part12: lens
 // note from u2/lens/makefile: after lensexb, there must be 4K of data (filler) for 64K overflow
 char lensex0[215]; // lens/_lensex0.obk
@@ -351,6 +355,14 @@ void demo_execute()
 	memcpy(fc, tmp, size);
 	free(tmp);
 
+	// part 6: tunneli
+	tmp = demo_load_assetsz("tunneli-tunnel.dat", &size);
+	memcpy(tun, tmp, size);
+	free(tmp);
+	tmp = demo_load_assetsz("tunneli-sinit.dat", &size);
+	memcpy(sini, tmp, size);
+	free(tmp);
+
 	// part12: lens
 	tmp = demo_load_obk("lens-_lensex0.obk", &size);
 	memcpy(lensex0, tmp, size);
@@ -404,7 +416,9 @@ void demo_execute()
 	outp(0x3C4, 4);
 	outp(0x3C5, 8);
 
-	dis_partstart(); // TUNNELI.EXE
+	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
+	tunneli_main();
+
 	dis_partstart(); // TECHNO.EXE
 	dis_partstart(); // PANICEND.EXE
 	dis_partstart(); // MNTSCRL.EXE
