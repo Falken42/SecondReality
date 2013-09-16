@@ -29,13 +29,13 @@ typedef struct _nedata
 	int32_t			dx;
 } nedata;
 
-static int16_t ndp0 = 0, ndp = 0;
+static uint16_t ndp0 = 0, ndp = 0;
 static nedata *nec = NULL;
 static nedata *nep[NROWS] = { NULL };
 static nedata  ne[MAXLINES] = { 0 };
 static nedata *nl[NROWS] = { NULL };
 
-static int16_t yrow = 0, yrowad = 0;
+static uint16_t yrow = 0, yrowad = 0;
 static nedata **siend = NULL;
 
 // from adata.asm
@@ -49,7 +49,7 @@ static void ng_init()
 
 	nec  = &ne[0];
 	ax   = ndp0;
-	ax  ^= 0x8000;
+	ax  ^= 0x4000;
 	ndp0 = ax;
 	ndp  = ax;
 
@@ -130,7 +130,7 @@ label4:
 	
 	// process list & kill finished lines
 	siend = bp;
-	cx    = 0x8000;
+	cx    = 0x4000;
 	si	  = &nl[0];
 	di	  = si;
 	goto label10;
@@ -201,7 +201,7 @@ static void ng_pass3()
 {
 	uint8_t *vram = MK_FP(0xA000, 0x0000);
 	const uint8_t *bg = bgpic;
-	int16_t bx, si;
+	uint16_t bx, si;
 	int di, al, ah, dhx, dx, chx, cx;
 
 	di  = 0;
@@ -213,11 +213,11 @@ static void ng_pass3()
 	//si=new     bx=last
 	//cx=newpos  dx=lastpos
 	//al=newcol  ah=lastcol
-	dhx = newdata1[bx    ];
-	dx  = newdata1[bx + 1];
+	dx  = newdata1[bx    ];
+	dhx = newdata1[bx + 1];
 	bx += 2;
-	chx = newdata1[si    ];
-	cx  = newdata1[si + 1];
+	cx  = newdata1[si    ];
+	chx = newdata1[si + 1];
 	si += 2;
 
 label21:
@@ -233,8 +233,8 @@ label21:
 	di  = cx;
 	cx  = chx;
 	al ^= cx & 0xFF;
-	chx = newdata1[si    ];
-	cx  = newdata1[si + 1];
+	cx  = newdata1[si    ];
+	chx = newdata1[si + 1];
 	si += 2;
 	goto label21;
 
@@ -251,8 +251,8 @@ label23:
 	di  = dx;
 	dx  = dhx;
 	ah ^= dx & 0xFF;
-	dhx = newdata1[bx    ];
-	dx  = newdata1[bx + 1];
+	dx  = newdata1[bx    ];
+	dhx = newdata1[bx + 1];
 	bx += 2;
 	goto label21;
 }
