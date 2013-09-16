@@ -191,7 +191,7 @@ label10:
 	ndp += 4;
 }
 
-static inline void fillmacro(uint8_t *vram, const uint8_t *bg, uint8_t color, int count)
+static __inline void fillmacro(uint8_t *vram, const uint8_t *bg, uint8_t color, int count)
 {
 	while (count--)
 		*vram++ = *bg++ | color;
