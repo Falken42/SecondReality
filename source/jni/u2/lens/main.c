@@ -22,7 +22,7 @@ static int16_t	*pathdata2;
 // char	pathdata[13000];
 #endif
 
-static int16_t *lens1,*lens2,*lens3,*lens4;
+static uint16_t *lens1,*lens2,*lens3,*lens4;
 extern char *back;
 static char *fade,*fade2;
 extern char *rotpic;

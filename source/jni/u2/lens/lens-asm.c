@@ -10,176 +10,70 @@ char *back;
 char *rotpic;
 char *rotpic90;
 
-void dorow(int16_t *lens, int u, int y, int bits)
+void dorow(const uint16_t *lens, int u, int y, int bits)
 {
-/*
-DOWORD 	MACRO	diadd,siadd
-	mov	bx,ds:[si+(siadd)]	;4
-	mov	al,fs:[bx+di]		;3
-	mov	bx,ds:[si+(siadd)+2]	;4
-	mov	ah,fs:[bx+di]		;3
-	or	ax,dx			;2
-	mov	es:[bp+(diadd)],ax	;5
-	ENDM				;=21
-
-PUBLIC _dorow
-_dorow	PROC FAR
-	push 	bp
-	mov 	bp,sp
-	push 	si
-	push	di
-	push	ds
-	
-	mov	fs,cs:_back[2]
-	mov	ax,0a000h
-	mov	es,ax
-	mov	ds,[bp+8]
-	mov	dx,[bp+14]
-	mov	dh,dl
-	mov	di,[bp+10]
-	mov	si,[bp+12]
-	shl	si,2
-	mov	cx,ds:[si+2]
-	mov	si,ds:[si]
-	cmp	cx,4
-	jge	@@2
-	jmp	@@0
-@@2:	add	di,ds:[si]
-	mov	bp,di
-	add	si,2
-	test	bp,1
-	jz	@@1
-	mov	bx,ds:[si]
-	add	si,2
-	mov	al,fs:[bx+di]
-	or	ax,dx
-	mov	es:[bp],al
-	inc	bp
-	dec	cx
-@@1:	push	cx
-	shr	cx,1
-	sub	si,320
-	sub	bp,320
-	mov	ax,cx ;*1
-	shl	cx,2
-	add	ax,cx ;*4
-	shl	cx,2
-	add	ax,cx ;*16
-	neg	ax
-	;bx=-count*21
-	add	ax,OFFSET @@l
-	jmp	ax
-	zzz=64
-	REPT	64
-	zzz=zzz-1
-	DOWORD	320+zzz*2,320+zzz*4
-	ENDM
-@@l:	pop	cx
-	test	cx,1
-	jz	@@0
-	and	cx,not 1
-	add	bp,cx
-	add	cx,cx
-	add	si,cx
-	mov	bx,ds:[si+320]
-	mov	al,fs:[bx+di]
-	or	ax,dx
-	mov	es:[bp+320],al
-@@0:	pop	ds
-	pop	di
-	pop	si
-	pop 	bp
-	ret
-_dorow	ENDP
-*/
+	int cx = lens[(y << 1) + 1];
+	if (cx >= 4)
+	{
+		char *const vram = MK_FP(0xa000, 0);
+		int si = lens[y << 1] >> 1;
+		const int di = lens[si++] + u;
+		int bp = di, zzz;
+		if (bp & 1)
+		{
+			vram[bp++] = back[(uint16_t)(lens[si++] + di)] | bits;
+			cx--;
+		}
+		si -= 160;
+		bp -= 320;
+		zzz = cx >> 1;
+		zzz = (zzz + (zzz << 2) + (zzz << 4)) / 21;
+		while (zzz-- > 0)
+		{
+			const int diadd = 320 + zzz * 2, siadd = 160 + zzz * 2;
+			vram[(uint16_t)(bp + diadd)] = back[(uint16_t)(lens[si + siadd] + di)] | bits;
+			vram[(uint16_t)(bp + diadd + 1)] = back[(uint16_t)(lens[si + siadd + 1] + di)] | bits;
+		}
+		if (cx & 1)
+		{
+			cx &= ~1;
+			vram[(uint16_t)(bp + cx + 320)] = back[(uint16_t)(lens[si + cx + 160] + di)] | bits;
+		}
+	}
 }
 
-void dorow2(int16_t *lens, int u, int y, int bits)
+void dorow2(const uint16_t *lens, int u, int y, int bits)
 {
-/*
-PUBLIC _dorow2
-_dorow2	PROC FAR
-	push 	bp
-	mov 	bp,sp
-	push 	si
-	push	di
-	push	ds
-	
-	mov	fs,[bp+8]
-	mov	si,[bp+12]
-	shl	si,2
-	mov	cx,fs:[si+2]
-	mov	si,fs:[si]
-	or	cx,cx
-	jcxz	@@0
-	mov	ds,cs:_back[2]
-	mov	ax,0a000h
-	mov	es,ax
-	mov	dx,[bp+14]
-	mov	dh,dl
-	mov	di,[bp+10]
-	add	di,fs:[si]
-	mov	ax,di
-	lea	bp,[si+2]
-	mov	si,ax
-	
-@@3:	mov	bx,fs:[bp+2]
-	mov	al,ds:[bx+di]
-	or	al,dl
-	mov	bx,fs:[bp]
-	add	bp,4
-	mov	es:[bx+si],al
-	dec	cx
-	jnz	@@3
-	
-@@0:	pop	ds
-	pop	di
-	pop	si
-	pop 	bp
-	ret
-_dorow2	ENDP
-*/
+	int cx = lens[(y << 1) + 1];
+	if (cx)
+	{
+		char *const vram = MK_FP(0xa000, 0);
+		int si = lens[y << 1] >> 1;
+		const int di = lens[si++] + u;
+		do
+		{
+			vram[(uint16_t)(lens[si] + di)] = back[(uint16_t)(lens[si + 1] + di)] | bits;
+			si += 2;
+		}
+		while (--cx);
+	}
 }
 
-void dorow3(int16_t *lens, int u, int y, int bits)
+void dorow3(const uint16_t *lens, int u, int y, int bits)
 {
-/*
-PUBLIC _dorow3
-_dorow3	PROC FAR
-	push 	bp
-	mov 	bp,sp
-	push 	si
-	push	di
-	push	ds
-	
-	mov	fs,[bp+8]
-	mov	si,[bp+12]
-	shl	si,2
-	mov	cx,fs:[si+2]
-	mov	si,fs:[si]
-	or	cx,cx
-	jcxz	@@0
-	mov	ds,cs:_back[2]
-	mov	ax,0a000h
-	mov	es,ax
-	mov	di,[bp+10]
-	add	di,fs:[si]
-	add	si,2
-	
-@@3:	mov	bx,fs:[si]
-	add	si,2
-	mov	al,ds:[bx+di]
-	mov	es:[bx+di],al
-	dec	cx
-	jnz	@@3
-	
-@@0:	pop	ds
-	pop	di
-	pop	si
-	pop 	bp
-	ret
-_dorow3	ENDP
-*/
+	int cx = lens[(y << 1) + 1];
+	if (cx)
+	{
+		char *const vram = MK_FP(0xa000, 0);
+		int si = lens[y << 1] >> 1;
+		const int di = lens[si] + u;
+		do
+		{
+			si++;
+			vram[(uint16_t)(lens[si] + di)] = back[(uint16_t)(lens[si] + di)];
+		}
+		while (--cx);
+	}
 }
 
 void inittwk(void)
@@ -243,7 +137,7 @@ void rotate(int x, int y, int xa, int ya)
 	xadd = eax;
 	yadd = ebx;
 
-	eax = esi = edi = 0;
+	esi = edi = 0;
 	for (rept = 0; rept < ZOOMXW / 4; rept++)
 	{
 		esi += yadd;
@@ -275,16 +169,16 @@ void rotate(int x, int y, int xa, int ya)
 		zzz = 0x1000;
 		for (rept = 0; rept < ZOOMXW / 4; rept++)
 		{
-			es[(edi + zzz++) & 0xffff] = ds[(esi + moda2[rept]) & 0xffff];
-			es[(edi + zzz++) & 0xffff] = ds[(esi + moda6[rept]) & 0xffff];
+			es[edi + zzz++] = ds[(uint16_t)(esi + moda2[rept])];
+			es[edi + zzz++] = ds[(uint16_t)(esi + moda6[rept])];
 		}
 
 		outport(0x3c4, 0x0c02);
 		zzz = 0x1000;
 		for (rept = 0; rept < ZOOMXW / 4; rept++)
 		{
-			es[(edi + zzz++) & 0xffff] = ds[(esi + modb2[rept]) & 0xffff];
-			es[(edi + zzz++) & 0xffff] = ds[(esi + modb6[rept]) & 0xffff];
+			es[edi + zzz++] = ds[(uint16_t)(esi + modb2[rept])];
+			es[edi + zzz++] = ds[(uint16_t)(esi + modb6[rept])];
 		}
 
 		edi += 80;
