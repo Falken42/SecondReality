@@ -1,32 +1,78 @@
-OUYA/Android/Win32 port of Second Reality
-=========================================
+Second Reality on OUYA/Android/Win32
+====================================
 
 This is a port of Second Reality by Future Crew updated to run on present-day platforms.  The OUYA is the focus, but should work fine on any other Android 2.3 device or higher.  See below for Win32 support.
 
-**Current status**:
-
-- Part 1 (alku): Renders and executes fully.  Bugs: Text does not scroll properly (needs ascrolltext() function implemented).
-- Part 2 (u2a): Not yet implemented.
-- Part 3 (pam): Screen flash and fade renders fully, explosion effect partially works.  Bugs: Graphic corruption, and incorrect page flipping.
-- Part 4 (beg): Renders and executes fully.
-- Part 5 (glenz): Executes fully, but does not render at all.  Currently skipped.
-- Part 14 (dots): Renders and executes fully.
-- No audio playback code has been written yet.
-- Timing and synchronization is not perfect.
-
-![dots part running on OUYA](http://falken42.github.com/sr6.jpg)
-
-*Commit 9f74af7 running on the OUYA, after adding dots part*
+![lens part running on OUYA](http://falken42.github.com/sr8.jpg)
 
 To build the Android version, run 'make' in the source folder.  You will need the Android NDK with API 10 installed.  The built .apk will automatically be uploaded to an attached device (via adb install) if it is connected.
 
-The Win32 version is currently in an experimental state, but is functional.  You will need the [Premake](http://industriousone.com/premake) installed.  To build with Visual Studio 2010, run "premake4 vs2010" in the source/win32 folder and open the generated solution. See [premake4.lua](https://github.com/Falken42/SecondReality/blob/master/source/win32/premake4.lua) for the details.
+The Win32 version is currently in an experimental state, but is functional.  You will need [Premake](http://industriousone.com/premake) installed.  To build with Visual Studio 2010, run "premake4 vs2010" in the source/win32 folder and open the generated solution. See [premake4.lua](https://github.com/Falken42/SecondReality/blob/master/source/win32/premake4.lua) for the details.
 
-If you are interested in helping, Pull Requests are welcomed.
+If you are interested in helping, Pull Requests are welcomed, or you may [contact me](mailto:bpoint42@gmail.com).
+
+
+Current Status
+--------------
+
+- [x] Part 1 (alku): Scrolling space background, with intro credits.
+- [x] Bugs: Text does not scroll properly (needs ascrolltext() function implemented).
+
+![alku part running on a Kindle Fire HD](http://falken42.github.com/sr4.jpg)
+
+- [ ] Part 2 (u2a): Not yet implemented.
+
+- [x] Part 3 (pam): Explosion effect.
+- [x] Bugs: Some graphic corruption, and incorrect page flipping.
+
+- [x] Part 4 (beg): Demo logo.
+
+![beg part running on a Kindle Fire HD](http://falken42.github.com/sr5.jpg)
+
+- [x] Part 5 (glenz): Chess board drop-down.
+- [ ] Part 6 (glenz2): Bouncing glenz 3D objects.
+- [ ] Bugs: Currently in-progress by [Falken42](https://github.com/Falken42/).
+
+- [x] Part 7 (tunneli): Dots tunnel.
+
+![tunneli part running on OUYA](http://falken42.github.com/sr7.jpg)
+
+- [ ] Part 8 (techno): Circle effect.
+- [ ] Bugs: Currently in-progress by [301z](https://github.com/301z/).
+
+- [ ] Part 9 (panicend): Not yet implemented.
+- [ ] Part 10 (mntscrl): Not yet implemented.
+- [ ] Part 11 (ddstars): Not yet implemented.
+
+- [x] Part 12 (lens): Lens and rotozoomer effect.
+
+![lens part running on OUYA](http://falken42.github.com/sr8.jpg)
+![rotozoomer part running on OUYA](http://falken42.github.com/sr9.jpg)
+
+- [ ] Part 13 (plzpart): Not yet implemented.
+
+- [x] Part 14 (dots): Mini vectorballs.
+
+![dots part running on OUYA](http://falken42.github.com/sr6.jpg)
+
+- [ ] Part 15 (rayscrl): Not yet implemented.
+- [ ] Part 16 (3dsinfld): Not yet implemented.
+- [ ] Part 17 (jplogo): Not yet implemented.
+- [ ] Part 18 (u2e): Not yet implemented.
+
+- [x] Part 19 (end): Ending screen.
+
+![end part running on OUYA](http://falken42.github.com/sr10.jpg)
+
+- [ ] Part 20 (cred): Not yet implemented.
+- [ ] Part 21 (endscrl): Not yet implemented.
+
+- No audio playback code has been written yet.
+- Timing and synchronization is not perfect.
 
 
 Porting Notes
-=============
+-------------
 
 This port implements a VGA hardware emulation layer through function calls that are made by the demo at the C library level.  This allows the demo to run natively while making minimal changes to the original source code.  Most of the VGA emulation is already complete, however, converting the demo's assembly code into functionally equivalent C code is taking the most time.
 
@@ -40,7 +86,7 @@ Instead of handling each part as a separate executable, this port compiles and s
 
 
 Multiplatform Support
-=====================
+---------------------
 
 All of the platform-specific code has been abstracted away in its own interface.  If you wish to add a new platform, implement the functions in source/jni/platform.h in a separate source file and add that source file to your build system.  Implement main() or whatever entry point function is required for your platform, and call the demo\_execute() function listed in u2-port.h to run the demo.
 
@@ -48,7 +94,7 @@ Note that the Second Reality code was originally developed for DOS and is non-re
 
 
 Older Screenshots
-=================
+-----------------
 
 ![Running on a Kindle Fire HD](http://falken42.github.com/sr.jpg)
 
@@ -62,17 +108,9 @@ Older Screenshots
 
 *Commit fec75a6 running on a Kindle Fire HD, with improved VGA support and scrolling*
 
-![Running on a Kindle Fire HD](http://falken42.github.com/sr4.jpg)
-
-*Commit 52a9fac running on a Kindle Fire HD, after various bug fixes*
-
-![Running on a Kindle Fire HD](http://falken42.github.com/sr5.jpg)
-
-*Commit c8da9a9 running on a Kindle Fire HD, after adding beg part*
-
 
 License
-=======
+-------
 
 The license for this port is the Unlicense, and is the same as the original Second Reality source ( https://github.com/mtuomi/SecondReality ):
 
