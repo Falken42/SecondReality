@@ -38,11 +38,11 @@ Current Status
 ![tunneli part running on OUYA](http://falken42.github.com/sr7.jpg)
 
 - [ ] Part 8 (techno): Circle effect.
+- [ ] Part 9 (techno2): More interferences.
 - [ ] Bugs: Currently in-progress by [301z](https://github.com/301z/).
 
-- [ ] Part 9 (panicend): Not yet implemented.
-- [ ] Part 10 (mntscrl): Not yet implemented.
-- [ ] Part 11 (ddstars): Not yet implemented.
+- [ ] Part 10 (panicend): Not yet implemented.
+- [ ] Part 11 (mntscrl): Not yet implemented.
 
 - [x] Part 12 (lens): Lens and rotozoomer effect.
 

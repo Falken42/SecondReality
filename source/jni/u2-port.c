@@ -22,15 +22,19 @@ char  memblock[(65535 * 4) + 62486];	// sizes calced from parsed out.in[0-4] dat
 // part4: beg
 char  pic[65536];				// enough size to hold the raw data which is extracted from beg/_pic.obk(44575) or end/_pic.obk(45884)
 
-// part5: glenz
+// part5-6: glenz
 char  fc[64784];				// size of raw data extracted from glenz/_fc.obk
 char  backpal[16 * 3];
 char  lightshift;
 int   demomode[3];
 
-// part6: tunneli
+// part7: tunneli
 char tun[35328]; // size of tunneli/tunnel.dat
 char sini[12292]; // size of tunneli/sinit.dat
+
+// part8-9: techno
+char circle[24000]; // techno/_circle.obk
+char circle2[8000]; // techno/_circle2.obk
 
 // part12: lens
 // note from u2/lens/makefile: after lensexb, there must be 4K of data (filler) for 64K overflow
@@ -350,17 +354,25 @@ void demo_execute()
 	memcpy(pic, tmp, size);
 	free(tmp);
 
-	// part 5: glenz
+	// part 5-6: glenz
 	tmp = demo_load_obk("glenz-_fc.obk", &size);
 	memcpy(fc, tmp, size);
 	free(tmp);
 
-	// part 6: tunneli
+	// part 7: tunneli
 	tmp = demo_load_assetsz("tunneli-tunnel.dat", &size);
 	memcpy(tun, tmp, size);
 	free(tmp);
 	tmp = demo_load_assetsz("tunneli-sinit.dat", &size);
 	memcpy(sini, tmp, size);
+	free(tmp);
+
+	// part 8-9: techno
+	tmp = demo_load_obk("techno-_circle.obk", &size);
+	memcpy(circle, tmp, size);
+	free(tmp);
+	tmp = demo_load_obk("techno-_circle2.obk", &size);
+	memcpy(circle2, tmp, size);
 	free(tmp);
 
 	// part12: lens
@@ -419,10 +431,10 @@ void demo_execute()
 	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	tunneli_main();
 
-	dis_partstart(); // TECHNO.EXE
+	techno_main();
+
 	dis_partstart(); // PANICEND.EXE
 	dis_partstart(); // MNTSCRL.EXE
-	dis_partstart(); // DDSTARS.EXE
 
 	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	lens_main();
@@ -795,9 +807,9 @@ void dis_partstart()
 		"glenz2",
 		"tunneli",
 		"techno",
+		"techno2",
 		"panicend",
 		"mntscrl",
-		"ddstars",
 		"lens",
 		"plzpart",
 		"dots",

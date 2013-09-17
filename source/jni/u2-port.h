@@ -13,6 +13,11 @@
 #define inp					inportb
 #define outp				outportb
 
+// compatibility workaround for usage of POSIX functions
+#define open(filename,oflag) ((int)platform_fopen(filename, "rb"))
+#define read(fd, buffer, count) ((int)platform_fread(buffer, 1, count, (PFILE *)(fd)))
+#define close(fd) (platform_fclose((PFILE *)(fd)))
+
 extern char *MK_FP(int seg, int off);
 
 unsigned char inportb(unsigned short int port);
