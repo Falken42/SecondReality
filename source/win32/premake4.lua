@@ -19,7 +19,7 @@ solution "u2"
 			"../jni/u2/beg/beg.c",
 			"../jni/u2/glenz/glenz-main.c", "../jni/u2/glenz/glenz-asm.c", "../jni/u2/glenz/zoomer.c",
 			"../jni/u2/tunneli/tun10.c",
-			"../jni/u2/techno/techno-koe.c", "../jni/u2/techno/techno-koea.c", "../jni/u2/techno/techno-koeb.c", "../jni/u2/techno/techno-readp.c",
+			"../jni/u2/techno/techno-koe.c", "../jni/u2/techno/techno-koea.c", "../jni/u2/techno/techno-koeb.c",
 			"../jni/u2/lens/lens-main.c", "../jni/u2/lens/lens-asm.c",
 			"../jni/u2/dots/dots-main.c", "../jni/u2/dots/dots-asm.c",
 			"../jni/u2/end/end.c"

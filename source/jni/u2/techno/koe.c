@@ -1,37 +1,32 @@
 #include <stdio.h>
-#include <sys\types.h>
-#include <sys\stat.h>
-#include <fcntl.h>
-#include <io.h>
-#include <malloc.h>
-#include <graph.h>
-#include "..\dis\dis.h"
+#include <stdlib.h>
+#include "../../u2-port.h"
 
 #include "readp.c"
 
 //extern char pic[];
 extern int sin1024[];
 
-char	*pic;
+static char	*pic;
 
-char	palette[768];
-char	*palfade;
-char	rowbuf[320];
+static char	palette[768];
+static char	*palfade;
+static char	rowbuf[320];
 
-int	pl=1,plv=0;
+static int	pl=1,plv=0;
 
-char *vbuf;
+static char *vbuf;
 
-char	pal[16*16*3];
+static char	pal[16*16*3];
 
-char *vram=(char *)0xa0000000L;
+//char *vram=(char *)0xa0000000L;
 
-int	curpal=0;
+static int	curpal=0;
 
 extern char power0[];
 extern char power1[];
 
-int 	waitborder(void)
+static int 	waitborder(void)
 {	
 	static int lasta=0;
 	int	a,r;
@@ -55,7 +50,7 @@ int 	waitborder(void)
 	return(r);
 }
 
-void	border(int r,int g,int b)
+static void	border(int r,int g,int b)
 {
 	dis_waitb();
 	outp(0x3c8,0);
@@ -65,10 +60,10 @@ void	border(int r,int g,int b)
 	dis_waitb();
 }
 
-void	setborder(int c)
+static void	setborder(int c)
 {
 	return;
-	_asm
+	/*_asm
 	{
 		mov	dx,3dah
 		in	al,dx
@@ -77,10 +72,10 @@ void	setborder(int c)
 		out	dx,al
 		mov	al,byte ptr c
 		out	dx,al
-	}
+	}*/
 }
 
-int *	flash(int i)
+static int *	flash(int i)
 {
 	static int pal1[16*3];
 	int	pal2[16*3];
@@ -102,8 +97,9 @@ int *	flash(int i)
 	return(pal1);
 }
 
-main(int argc,char *argv[])
+techno_main(int argc,char *argv[])
 {
+	char *vram=MK_FP(0x0a000,0);
 	FILE	*f1;
 	int	rot=45;
 	int	x,y,b,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy,pl=1,plv=0;
@@ -112,9 +108,14 @@ main(int argc,char *argv[])
 	int	*ip;
 	char	*v,*p;
 	
+#if 1
+	dis_partstart();
+	dis_partstart();
+	return;
+#endif
 	dis_partstart();
 	
-	vbuf=halloc(8192,1);
+	vbuf=calloc(8192,1);
 	
 	for(c=0;c<16;c++)
 	{
@@ -210,7 +211,7 @@ main(int argc,char *argv[])
 		}
 	}
 	
-	while(!dis_exit() && dis_musplus()<-4) ;
+	// TODO: while(!dis_exit() && dis_musplus()<-4) ;
 	dis_setmframe(0);
 
 	dointerference2();
@@ -227,42 +228,16 @@ main(int argc,char *argv[])
 	flash(192);
 	flash(256);
 	
-	_asm
-	{
-	;	mov	dx,3c8h
-	;	xor	al,al
-	;	out	dx,al
-	;	inc	dx
-	;	mov	cx,16*3
-	;l1:	out	dx,al
-	;	loop	l1
-		mov	dx,3d4h
-		mov	ax,0013h+256*20
-		out	dx,ax
-		mov	ax,000dh
-		out	dx,ax
-		mov	ax,000ch
-		out	dx,ax
-		mov	dx,3dah
-		in	al,dx
-		mov	dx,3c0h
-		mov	al,13h
-		out	dx,al
-		xor	al,al
-		out	dx,al
-		mov	al,20h
-		out	dx,al
-		mov	dx,3c4h
-		mov	ax,0f02h
-		out	dx,ax
-	}
+	outport(0x3d4,0x0013+256*20);
+	outport(0x3d4,0x000d);
+	outport(0x3d4,0x000c);
+	inportb(0x3da);
+	outportb(0x3c0,0x13);
+	outportb(0x3c0,0);
+	outportb(0x3c0,0x20);
+	outport(0x3c4,0x0f02);
 	memset(vram,0,64000);
-	_asm
-	{
-		mov	dx,3c4h
-		mov	ax,0f02h
-		out	dx,ax
-	}
+	outport(0x3c4,0x0f02);
 	memset(vram,255,8000);
 	ip=flash(-2);
 	for(a=0;a<16;a++)
@@ -272,6 +247,7 @@ main(int argc,char *argv[])
 		ip[a*3+2]=a*8/2;
 	}
 
+#if 0 // TODO:
 	while(!dis_exit() && dis_musplus()<-3) ;
 
 	while(!dis_exit())
@@ -279,6 +255,7 @@ main(int argc,char *argv[])
 		a=dis_musrow()&7;
 		if(a==7) break;
 	}
+#endif
 
 	for(b=0;b<4 && !dis_exit();b++)
 	{	
@@ -300,11 +277,13 @@ main(int argc,char *argv[])
 			else flash(0);
 		}
 		
+#if 0 // TODO:
 		while(!dis_exit())
 		{
 			a=dis_musrow()&7;
 			if(a==7) break;
 		}
+#endif
 		{
 			flash(-1);
 			flash(32);
@@ -314,33 +293,35 @@ main(int argc,char *argv[])
 		}
 	}
     }
-	pic=halloc(20000,4);
+	pic=(char *)calloc(20000,4);
 	if(!pic) 
 	{
-		_asm mov	ax,0
-		_asm int	10h
-		printf("GENERAL WINDOWS VIOLATION - REMOVE WINDOWS.");
-		getch();
+		//_asm mov	ax,0
+		//_asm int	10h
+		//printf("GENERAL WINDOWS VIOLATION - REMOVE WINDOWS.");
+		//getch();
 		exit(3);
 	}
-	palfade=halloc(13000,1);
+	palfade=(char *)calloc(13000,1);
 	dis_partstart();
 	doit1(70*6);
 	doit2(70*12);
 	doit3(70*14);
-	hfree(palfade);
-	hfree(pic);
+	free(palfade);
+	free(pic);
+	free(vbuf);
 
 	if(!dis_indemo())
 	{	
-		_asm mov ax,3
-		_asm int 10h
+		//_asm mov ax,3
+		//_asm int 10h
 	}
 	return(0);
 }
 
 int	doit1(int count)
 {
+#if 0
 	int	rot=45;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy;
 	int	vma,vm;
@@ -396,10 +377,12 @@ int	doit1(int count)
 		}
 		setborder(0);
 	}
+#endif
 }
 
 int	doit2(int count)
 {
+#if 0
 	int	rot=50,rota=10;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy;
 	int	vma,vm;
@@ -456,10 +439,12 @@ int	doit2(int count)
 		}
 		setborder(0);
 	}
+#endif
 }
 
 int	doit3(int count)
 {
+#if 0
 	int	rot=45,rota=10,rot2=0;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,b,hx,hy,vx,vy,cx,cy,wx,wy;
 	int	vma,vm,xpos=320,xposa=0;
@@ -724,5 +709,5 @@ int	doit3(int count)
 		_asm mov al,20h
 		_asm out dx,al
 	}
+#endif
 }
-

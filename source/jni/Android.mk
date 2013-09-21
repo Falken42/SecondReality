@@ -23,7 +23,7 @@ LOCAL_SRC_FILES := u2-port.c platform-android.c readp.c sin1024.c \
 	u2/beg/beg.c \
 	u2/glenz/glenz-main.c u2/glenz/zoomer.c u2/glenz/glenz-asm.c \
 	u2/tunneli/tun10.c \
-	u2/techno/techno-koe.c u2/techno/techno-koea.c u2/techno/techno-koeb.c u2/techno/techno-readp.c \
+	u2/techno/techno-koe.c u2/techno/techno-koea.c u2/techno/techno-koeb.c \
 	u2/lens/lens-main.c u2/lens/lens-asm.c \
 	u2/dots/dots-main.c u2/dots/dots-asm.c \
 	u2/end/end.c

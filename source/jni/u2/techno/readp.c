@@ -1,13 +1,13 @@
 struct st_readp
 {
-	int	magic;
-	int	wid;
-	int	hig;
-	int	cols;
-	int	add;
+	int16_t	magic;
+	int16_t	wid;
+	int16_t	hig;
+	int16_t	cols;
+	int16_t	add;
 };
 
-void	readp(char *dest,int row,char *src)
+static void	readp(char *dest,int row,char *src)
 {
 	int	bytes,a,b;
 	struct st_readp *hdr;
@@ -21,52 +21,28 @@ void	readp(char *dest,int row,char *src)
 	src+=hdr->add*16;
 	while(row)
 	{
-		src+=*(int *)src;
+		src+=*(int16_t *)src;
 		src+=2;
 		row--;
-		_asm
+		if(*(uint16_t *)&src[0]>=0x4000)
 		{
-			cmp	word ptr src[0],4000h
-			jb	k1
-			sub	word ptr src[0],4000h
-			add	word ptr src[2],400h
-		k1:
+			*(uint16_t *)&src[0]-=0x4000;
+			*(uint16_t *)&src[2]+=0x400;
 		}
 	}
-	bytes=*(int *)src;
+	bytes=*(int16_t *)src;
 	src+=2;
-	_asm
 	{
-		push	si
-		push	ds
-		push	di
-		push	es
-		mov	cx,bytes
-		lds	si,src
-		add	cx,si
-		les	di,dest
-	l1:	mov	al,ds:[si]
-		inc	si
-		or	al,al
-		jns	l2
-		mov	ah,al
-		and	ah,7fh	
-		mov	al,ds:[si]
-		inc	si
-	l4:	mov	es:[di],al
-		inc	di
-		dec	ah
-		jnz	l4
-		cmp	si,cx
-		jb	l1
-		jmp	l3
-	l2:	mov	es:[di],al
-		inc	di
-		cmp	si,cx
-		jb	l1
-	l3:	pop	es
-		pop	di
-		pop	ds
-		pop	si
+		const char *const cx=src+bytes;
+		while(src<cx)
+			if(*(const int8_t *)src>=0)
+				*dest++=*++src;
+			else
+			{
+				char ah=*src++&0x7f;
+				while(ah--)
+					*dest++=*src;
+				src++;
+			}
 	}
 }

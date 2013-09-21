@@ -26,6 +26,7 @@ extern void outport(unsigned short int port, unsigned short int val);
 
 extern int  dis_indemo();
 extern int  dis_musplus();
+extern int	dis_musrow();
 extern void dis_partstart();
 extern int  dis_waitb();
 extern int  dis_sync();

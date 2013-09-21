@@ -45,7 +45,7 @@ static int	waitb()
 	return(1);
 }
 
-void	drawlens(int x0,int y0)
+static void	drawlens(int x0,int y0)
 {
 	int	y,ys,ye;
 	long int u1,u2;
@@ -74,7 +74,7 @@ void	drawlens(int x0,int y0)
 	}
 }
 
-void	setvmode(int m)
+static void	setvmode(int m)
 {
 	// _asm mov ax,m
 	// _asm int 10h
@@ -85,7 +85,7 @@ static int	firfade2[200];
 static int	firfade1a[200];
 static int	firfade2a[200];
 
-void	part1(void)
+static void	part1(void)
 {
 	char far *vram=MK_FP(0x0a000,0);
 	int	x,y,xa,ya;
@@ -130,7 +130,7 @@ void	part1(void)
 	}
 }
 
-void	part2(void)
+static void	part2(void)
 {
 	int	firstbounce=1;
 	int	x,y,xa,ya;
@@ -182,7 +182,7 @@ void	part2(void)
 	}
 }
 
-void	part3(void)
+static void	part3(void)
 {
 	int	x,y,xa,ya;
 	int	a,r,g,b,c,i;

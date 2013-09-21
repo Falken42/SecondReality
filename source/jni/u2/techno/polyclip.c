@@ -1,233 +1,172 @@
 //
-// ported from polyclip.asm, to be included from techno-koea.c
+// ported from polyclip.asm
+// to be included from techno-koea.c
 //
 // variables below come from techno-koea.c:
-// - static uint16_t polyisides;
-// - static uint16_t polyixy[16][2];
-// - static uint16_t polysides;
-// - static uint16_t polyxy[16][2];
+// - static unsigned polyisides;
+// - static int16_t polyixy[16][2];
+// - static unsigned polysides;
+// - static int16_t polyxy[16][2];
 //
 // and the only function externalized from this file is clipanypoly()
 //
 #include <stdint.h>
 
-static uint16_t WMINY;
-static uint16_t WMAXY = 199;
-static uint16_t WMINX;
-static uint16_t WMAXX = 319;
+static int16_t WMINY;
+static int16_t WMAXY = 199;
+static int16_t WMINX;
+static int16_t WMAXX = 319;
 
-static uint16_t clip_x1;
-static uint16_t clip_y1;
-static uint16_t clip_x2;
-static uint16_t clip_y2;
-static uint16_t clipxy2[32][2]; // tmp storage for polyclip
+static int16_t clip_x1;
+static int16_t clip_y1;
+static int16_t clip_x2;
+static int16_t clip_y2;
+static int16_t clipxy2[32][2]; // tmp storage for polyclip
 
-static uint16_t ax, bx, cx, dx; // WIP:
+static unsigned cliplinex(void);
+static unsigned clipliney(void);
 
-static void cliplinex(void);
-static void clipliney(void);
-
-static void clipanypoly(void) // TODO: pointer arithmetic
+static void clipanypoly_cap2r(void)
 {
-	// polyisides/polyixy =>polysides/polyxy
-/*
-	cx = polyisides;
-	if ((int16_t)cx <= 2)
+	if (!clipliney() && !cliplinex())
 	{
-		if (cx != 1)
-		{
-			if (!cx)
-				goto cap0;
-
-			// line
-			mov	eax,dword ptr ds:polyixy[0]
-			mov	dword ptr ds:clip_x1,eax
-			mov	eax,dword ptr ds:polyixy[4]
-			mov	dword ptr ds:clip_x2,eax
-
-		cap2r:
-			clipliney();
-			if (ax)
-				goto cap0;
-
-			cliplinex();
-			if (ax)
-				goto cap0;
-
-			mov	eax,dword ptr ds:clip_x1
-			mov	dword ptr ds:polyxy[0],eax
-			mov	edx,dword ptr ds:clip_x2
-			mov	dword ptr ds:polyxy[4],edx
-			polysides = (eax != edx) ? 2 : 1;
-
-			return;
-		}
-
-		// dot
-		mov	eax,dword ptr ds:polyixy[0]
-		cmp	ax,cs:WMINX
-		jl	cap0
-
-		cmp	ax,cs:WMAXX
-		jg	cap0
-
-		// eax = dword ptr polyixy[0]
-		ror	eax,16
-		cmp	ax,cs:WMINY
-		jl	cap0
-
-		cmp	ax,cs:WMAXY
-		jg	cap0
-
-		ror	eax,16
-		mov	dword ptr ds:polyxy,eax
-		polysides = 1;
-		return;
-
-	cap0:
-		// all clipped away
-		polysides = 0;
-		return;
+		polyxy[0][0] = clip_x1;
+		polyxy[0][1] = clip_y1;
+		polyxy[1][0] = clip_x2;
+		polyxy[1][1] = clip_y2;
+		polysides = ((clip_x1 == clip_x2) && (clip_y1 == clip_y2)) ? 1 : 2;
 	}
-
-	// polygon, first clip y, then x
-	mov	si,cx
-	shl	si,2
-	sub	si,4
-	mov	di,0
-	mov	eax,dword ptr ds:polyixy[si]
-	mov	dword ptr ds:clip_x1,eax
-	mov	eax,dword ptr ds:polyixy[di]
-	mov	dword ptr ds:clip_x2,eax
-	call	clipliney
-
-	mov	cx,ds:polyisides
-	xor	di,di
-	xor	bx,bx
-	mov	edx,80008000h
-	jmp	cap35
-	do
-	{
-		push	di
-		push	bx
-		push	cx
-		push	edx
-		mov	si,di
-		sub	si,4
-		mov	eax,dword ptr ds:polyixy[si]
-		mov	dword ptr ds:clip_x1,eax
-		mov	eax,dword ptr ds:polyixy[di]
-		mov	dword ptr ds:clip_x2,eax
-		call	clipliney
-		pop	edx
-		pop	cx
-		pop	bx
-		pop	di
-
-	cap35:
-		if (!ax)
-		{
-			mov	eax,dword ptr ds:clip_x1
-			if (eax != edx)
-			{
-				mov	dword ptr ds:clipxy2[bx],eax
-				mov	edx,eax
-				add	bx,4
-			}
-			mov	eax,dword ptr ds:clip_x2
-			if (eax == edx)
-			{
-				mov	dword ptr ds:clipxy2[bx],eax
-				mov	edx,eax
-				add	bx,4
-			}
-		}
-		add	di,4
-	}
-	while (--cx);
-
-	cx = bx >> 2;
-	if (dword ptr ds:clipxy2[0] == edx)
-		cx--;
-	polysides = cx;
-
-	if ((int16_t)cx <= 2)
-	{
-		if (!cx)
-			return;
-
-		mov	eax,dword ptr ds:clipxy2[0]
-		mov	dword ptr ds:clip_x1,eax
-		mov	eax,dword ptr ds:clipxy2[4]
-		mov	dword ptr ds:clip_x2,eax
-		jmp	cap2r // reclip the remaining line
-	}
-
-	mov	si,cx
-	shl	si,2
-	sub	si,4
-	mov	di,0
-	mov	eax,dword ptr ds:clipxy2[si]
-	mov	dword ptr ds:clip_x1,eax
-	mov	eax,dword ptr ds:clipxy2[di]
-	mov	dword ptr ds:clip_x2,eax
-	call	cliplinex
-
-	cx = polysides;
-	di = 0;
-	bx = 0;
-	mov	edx,80008000h
-	jmp	cbp35
-	do
-	{
-		push	di
-		push	bx
-		push	cx
-		push	edx
-		mov	si,di
-		sub	si,4
-		mov	eax,dword ptr ds:clipxy2[si]
-		mov	dword ptr ds:clip_x1,eax
-		mov	eax,dword ptr ds:clipxy2[di]
-		mov	dword ptr ds:clip_x2,eax
-		call	cliplinex
-		pop	edx
-		pop	cx
-		pop	bx
-		pop	di
-
-	cbp35:
-		if (!ax)
-		{
-			mov	eax,dword ptr ds:clip_x1
-			if (eax != edx)
-			{
-				mov	dword ptr ds:polyxy[bx],eax
-				mov	edx,eax
-				add	bx,4
-			}
-			mov	eax,dword ptr ds:clip_x2
-			if (eax != edx)
-			{
-				mov	dword ptr ds:polyxy[bx],eax
-				mov	edx,eax
-				add	bx,4
-			}
-		}
-		add	di,4
-	}
-	while (--cx);
-
-	cx = bx >> 2;
-	if (dword ptr ds:polyxy[0] == edx)
-		cx--;
-	polysides = cx;
-*/
 }
 
-static uint8_t clipcheck(int16_t reg, int16_t min, int16_t max, uint8_t flagmin, uint8_t flagmax)
+static void clipanypoly(void) // polyisides/polyixy =>polysides/polyxy
 {
-	uint8_t flagreg = 0;
+	unsigned ax, cx, di;
+	int16_t xxx, yyy;
+	if (polyisides <= 2)
+	{
+		polysides = 0;
+		if (polyisides == 1) // dot
+		{
+			if ((polyixy[0][0] >= WMINX) && (polyixy[0][0] <= WMAXX) && (polyixy[0][1] >= WMINY) && (polyixy[0][1] <= WMAXY))
+			{
+				polyxy[0][0] = polyixy[0][0];
+				polyxy[0][1] = polyixy[0][1];
+				polysides = 1;
+			}
+		}
+		else if (polyisides) // line
+		{
+			clip_x1 = polyixy[0][0];
+			clip_y1 = polyixy[0][1];
+			clip_x2 = polyixy[1][0];
+			clip_y2 = polyixy[1][1];
+			clipanypoly_cap2r();
+		}
+		return;
+	}
+	// polygon, first clip y, then x
+	clip_x1 = polyixy[polyisides - 1][0];
+	clip_y1 = polyixy[polyisides - 1][1];
+	clip_x2 = polyixy[0][0];
+	clip_y2 = polyixy[0][1];
+	ax = clipliney();
+	cx = polyisides;
+	di = 0;
+	polysides = 0;
+	xxx = yyy = 0x8000; // TODO:
+	while (cx)
+	{
+		if (!ax)
+		{
+			if ((clip_x1 != xxx) || (clip_y1 != yyy))
+			{
+				clipxy2[polysides][0] = clip_x1;
+				clipxy2[polysides][1] = clip_y1;
+				xxx = clip_x1;
+				yyy = clip_y1;
+				polysides++;
+			}
+			if ((clip_x2 != xxx) || (clip_y2 != yyy))
+			{
+				clipxy2[polysides][0] = clip_x2;
+				clipxy2[polysides][1] = clip_y2;
+				xxx = clip_x2;
+				yyy = clip_y2;
+				polysides++;
+			}
+		}
+		di++;
+		if (--cx)
+		{
+			clip_x1 = polyixy[di - 1][0];
+			clip_y1 = polyixy[di - 1][1];
+			clip_x2 = polyixy[di][0];
+			clip_y2 = polyixy[di][1];
+			ax = clipliney();
+		}
+	}
+	if ((clipxy2[0][0] == xxx) && (clipxy2[0][1] == yyy))
+		polysides--;
+	if (polysides <= 2)
+	{
+		if (polysides) // reclip the remaining line
+		{
+			polysides = 0;
+			clip_x1 = clipxy2[0][0];
+			clip_y1 = clipxy2[0][1];
+			clip_x2 = clipxy2[1][0];
+			clip_y2 = clipxy2[1][1];
+			clipanypoly_cap2r();
+		}
+		return;
+	}
+	clip_x1 = clipxy2[polysides - 1][0];
+	clip_y1 = clipxy2[polysides - 1][1];
+	clip_x2 = clipxy2[0][0];
+	clip_y2 = clipxy2[0][1];
+	ax = cliplinex();
+	cx = polysides;
+	di = 0;
+	polysides = 0;
+	xxx = yyy = 0x8000; // TODO:
+	while (cx)
+	{
+		if (!ax)
+		{
+			if ((clip_x1 != xxx) || (clip_y1 != yyy))
+			{
+				polyxy[polysides][0] = clip_x1;
+				polyxy[polysides][1] = clip_y1;
+				xxx = clip_x1;
+				yyy = clip_y1;
+				polysides++;
+			}
+			if ((clip_x2 != xxx) || (clip_y2 != yyy))
+			{
+				polyxy[polysides][0] = clip_x2;
+				polyxy[polysides][1] = clip_y2;
+				xxx = clip_x2;
+				yyy = clip_y2;
+				polysides++;
+			}
+		}
+		di++;
+		if (--cx)
+		{
+			clip_x1 = clipxy2[di - 1][0];
+			clip_y1 = clipxy2[di - 1][1];
+			clip_x2 = clipxy2[di][0];
+			clip_y2 = clipxy2[di][1];
+			ax = cliplinex();
+		}
+	}
+	if ((polyxy[0][0] == xxx) && (polyxy[0][1] == yyy))
+		polysides--;
+}
+
+static unsigned clipcheck(int reg, int min, int max, unsigned flagmin, unsigned flagmax)
+{
+	unsigned flagreg = 0;
 	if (reg < min)
 		flagreg |= flagmin;
 	if (reg > max)
@@ -235,65 +174,52 @@ static uint8_t clipcheck(int16_t reg, int16_t min, int16_t max, uint8_t flagmin,
 	return flagreg;
 }
 
-static void clipmacro(uint16_t *v1, uint16_t v2, uint16_t *w1, uint16_t w2, uint16_t wl) // WIP: uses cx,dx
+static void clipmacro(int16_t *v1, int16_t v2, int16_t *w1, int16_t w2, int16_t wl)
 {
-	cx = w2 - *w1;
+	const int cx = w2 - *w1;
 	if (!cx)
 		*w1 = wl;
 	else
 	{
-		const uint16_t bp = wl - *w1;
-		const uint16_t ax = v2 - *v1;
-		const int32_t dxax = (int32_t)(int16_t)ax * (int16_t)bp / (int16_t)cx;
-		dx = (uint16_t)((uint32_t)dxax >> 16);
-		*v1 = (uint16_t)dxax + *v1;
+		*v1 += (int16_t)((v2 - *v1) * (wl - *w1) / cx);
 		*w1 = wl;
 	}
 }
 
-static void cliplinex(void) // WIP: uses ax,bx + cx,dx
+static unsigned cliplinex(void)
 {
-	// input line polyxy[SI]=>polyxy[DI]
-	uint8_t bl, bh, al;
-	bl = clipcheck((int16_t)clip_x1, (int16_t)WMINX, (int16_t)WMAXX, 1, 2);
-	ax = clip_x2;
-	bh = clipcheck((int16_t)ax, (int16_t)WMINX, (int16_t)WMAXX, 1, 2);
-	bx = (bh << 8) | bl;
-	al = bl & bh;
-	ax = (ax & 0xff00) | al;
+	const unsigned bl = clipcheck(clip_x1, WMINX, WMAXX, 1, 2);
+	const unsigned bh = clipcheck(clip_x2, WMINX, WMAXX, 1, 2);
+	const unsigned al = bl & bh;
 	if (!al)
 	{
 		if (bl & 1)
-			clipmacro(&clip_y1, clip_y2, &clip_x1, clip_x2, WMINX); // WIP: uses cx,dx
+			clipmacro(&clip_y1, clip_y2, &clip_x1, clip_x2, WMINX);
 		if (bl & 2)
-			clipmacro(&clip_y1, clip_y2, &clip_x1, clip_x2, WMAXX); // WIP: uses cx,dx
+			clipmacro(&clip_y1, clip_y2, &clip_x1, clip_x2, WMAXX);
 		if (bh & 1)
-			clipmacro(&clip_y2, clip_y1, &clip_x2, clip_x1, WMINX); // WIP: uses cx,dx
+			clipmacro(&clip_y2, clip_y1, &clip_x2, clip_x1, WMINX);
 		if (bh & 2)
-			clipmacro(&clip_y2, clip_y1, &clip_x2, clip_x1, WMAXX); // WIP: uses cx,dx
-		ax = 0;
+			clipmacro(&clip_y2, clip_y1, &clip_x2, clip_x1, WMAXX);
 	}
+	return al;
 }
 
-static void clipliney(void) // WIP: uses ax,bx + cx,dx
+static unsigned clipliney(void)
 {
-	uint8_t bl, bh, al;
-	bl = clipcheck((int16_t)clip_y1, (int16_t)WMINY, (int16_t)WMAXY, 4, 8);
-	ax = clip_y2;
-	bh = clipcheck((int16_t)ax, (int16_t)WMINY, (int16_t)WMAXY, 4, 8);
-	bx = (bh << 8) | bl;
-	al = bl & bh;
-	ax = (ax & 0xff00) | al;
+	const unsigned bl = clipcheck(clip_y1, WMINY, WMAXY, 4, 8);
+	const unsigned bh = clipcheck(clip_y2, WMINY, WMAXY, 4, 8);
+	const unsigned al = bl & bh;
 	if (!al)
 	{
 		if (bl & 4)
-			clipmacro(&clip_x1, clip_x2, &clip_y1, clip_y2, WMINY); // WIP: uses cx,dx
+			clipmacro(&clip_x1, clip_x2, &clip_y1, clip_y2, WMINY);
 		if (bl & 8)
-			clipmacro(&clip_x1, clip_x2, &clip_y1, clip_y2, WMAXY); // WIP: uses cx,dx
+			clipmacro(&clip_x1, clip_x2, &clip_y1, clip_y2, WMAXY);
 		if (bh & 4)
-			clipmacro(&clip_x2, clip_x1, &clip_y2, clip_y1, WMINY); // WIP: uses cx,dx
+			clipmacro(&clip_x2, clip_x1, &clip_y2, clip_y1, WMINY);
 		if (bh & 8)
-			clipmacro(&clip_x2, clip_x1, &clip_y2, clip_y1, WMAXY); // WIP: uses cx,dx
-		ax = 0;
+			clipmacro(&clip_x2, clip_x1, &clip_y2, clip_y1, WMAXY);
 	}
+	return al;
 }

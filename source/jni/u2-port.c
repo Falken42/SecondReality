@@ -795,6 +795,12 @@ int dis_musplus()
 	return -16;
 }
 
+int dis_musrow()
+{
+	// NIY
+	return 0;
+}
+
 void dis_partstart()
 {
 	static const char *part_name[] = {
