@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <windows.h>
 #include <tchar.h>
+#include <math.h>
 #include "platform.h"
 
 struct Me
@@ -122,15 +123,31 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 			sizeof(BITMAPINFOHEADER),
 			me.framebuffer_width_in_pixels, -me.framebuffer_height_in_pixels, 1, 24, BI_RGB
 		};
-		RECT rc;
+		RECT windowRect;
 		PAINTSTRUCT ps;
-		GetClientRect(hwnd, &rc);
+		const double aspectRatio = 1.3333333; // 4:3
+		int displayX, displayY, displayWidth, displayHeight;
+		
+		GetClientRect(hwnd, &windowRect);
+		
+		if((1.0 * windowRect.right / windowRect.bottom) > aspectRatio) {
+			displayWidth = (int)ceil(windowRect.bottom * aspectRatio);
+			displayHeight = windowRect.bottom;
+		}
+		else {
+			displayWidth = windowRect.right;
+			displayHeight = (int)ceil(windowRect.right * 1/aspectRatio);
+		}
+		displayX = (windowRect.right - displayWidth) / 2;
+		displayY = (windowRect.bottom - displayHeight) / 2;
+		
 		StretchDIBits(
 			BeginPaint(hwnd, &ps),
-			0, 0, rc.right, rc.bottom, /* TODO: letterboxing */
+			displayX, displayY, displayWidth, displayHeight,
 			0, 0, me.framebuffer_width_in_pixels, me.framebuffer_height_in_pixels, me.bitmap,
 			(const BITMAPINFO *)&bmih, DIB_RGB_COLORS, SRCCOPY);
 		EndPaint(hwnd, &ps);
+		
 		return 0;
 	}
 	if (msg == WM_DESTROY)
