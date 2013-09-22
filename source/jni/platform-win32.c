@@ -123,20 +123,22 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 			sizeof(BITMAPINFOHEADER),
 			me.framebuffer_width_in_pixels, -me.framebuffer_height_in_pixels, 1, 24, BI_RGB
 		};
-		RECT windowRect;
 		PAINTSTRUCT ps;
-		const double aspectRatio = 1.3333333; // 4:3
+
+		RECT windowRect;
+		const double displayAspectRatio = 4 / 3.0;
 		int displayX, displayY, displayWidth, displayHeight;
 		
 		GetClientRect(hwnd, &windowRect);
-		
-		if((1.0 * windowRect.right / windowRect.bottom) > aspectRatio) {
-			displayWidth = (int)ceil(windowRect.bottom * aspectRatio);
+		if((1.0 * windowRect.right / windowRect.bottom) > displayAspectRatio)
+		{
+			displayWidth = (int)ceil(windowRect.bottom * displayAspectRatio);
 			displayHeight = windowRect.bottom;
 		}
-		else {
+		else
+		{
 			displayWidth = windowRect.right;
-			displayHeight = (int)ceil(windowRect.right * 1/aspectRatio);
+			displayHeight = (int)ceil(windowRect.right * 1 / displayAspectRatio);
 		}
 		displayX = (windowRect.right - displayWidth) / 2;
 		displayY = (windowRect.bottom - displayHeight) / 2;
