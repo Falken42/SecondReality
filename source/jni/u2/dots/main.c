@@ -283,7 +283,7 @@ dots_main(int argc,char *argv[])
 	}
 	if(!dis_indemo())
 	{
-		int10h(0x13);
+		int10h(3);
 	}
 	free(bgpic);
 	return(0);

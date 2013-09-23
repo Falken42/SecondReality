@@ -634,6 +634,6 @@ glenz_main()
     dis_setcopper(0,NULL);
     if(!dis_indemo())
     {
-		int10h(0x13);
+		int10h(3);
     }
 }
