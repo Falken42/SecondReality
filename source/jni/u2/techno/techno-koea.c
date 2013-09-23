@@ -22,6 +22,8 @@ static int16_t polyxy[16][2];
 // in ../../sin1024.c
 extern int sin1024[];
 
+static void blitinit(void);
+
 /*
 REPOUTSB MACRO
 	local l1
@@ -35,21 +37,8 @@ l1:	mov	al,ds:[si]
 
 void asminit(char *vbuf)
 {
-/*
-	push 	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	mov	ax,[bp+8]
-	mov	cs:_vbufseg,ax
-	call	blitinit
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-*/
+	_vbufseg = vbuf;
+	blitinit();
 }
 
 /*
@@ -90,39 +79,24 @@ _asmdoit2 PROC FAR
 _asmdoit2 ENDP
 */
 
-/*
-blitinit PROC NEAR
-	mov	bx,OFFSET _rows
-	mov	cx,200
-	mov	dx,40
-	xor	ax,ax
-@@l1:	mov	cs:[bx],ax
-	add	ax,dx
-	add	bx,2
-	loop	@@l1
-	xor	al,al
-	mov	bx,OFFSET _blit16t
-	mov	cx,256
-@@1:	mov	dh,255
-	mov	dl,al
-	xor	ah,ah
-	REPT	8
-	local	l2
-	rcl	dl,1
-	jnc	l2
-	xor	ah,dh
-l2:	shr	dh,1
-	ENDM
-	mov	cs:[bx],ah
-	ror	ah,1
-	and	ah,80h
-	mov	cs:[bx+1],ah
-	add	bx,2
-	inc	al
-	loop	@@1
-	ret
-blitinit ENDP
-*/
+static void blitinit(void)
+{
+	uint16_t *bx = _rows, cx;
+	for (cx = 0; cx < 40 * 200; cx += 40)
+		*bx++ = cx;
+	bx = _blit16t;
+	for (cx = 0; cx < 256; cx++)
+	{
+		uint8_t ah = 0, dh = 255, carry = 0x80;
+		for (; carry; carry >>= 1)
+		{
+			if (cx & carry)
+				ah ^= dh;
+			dh >>= 1;
+		}
+		*bx++ = (uint16_t)(ah | ((ah & 1) << 15));
+	}
+}
 
 /*
 blit16	PROC NEAR

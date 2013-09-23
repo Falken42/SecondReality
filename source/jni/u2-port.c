@@ -782,6 +782,11 @@ void setpalarea(char *pal, int start, int cnt)
 		outportb(0x3C9, *pal++);
 }
 
+void int10h(unsigned short mode)
+{
+	LOGI("int10h(0x%04x): not implemented yet", mode);
+}
+
 int dis_indemo()
 {
 	// always 1 for us

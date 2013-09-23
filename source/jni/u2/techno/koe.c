@@ -108,11 +108,6 @@ techno_main(int argc,char *argv[])
 	int	*ip;
 	char	*v,*p;
 	
-#if 1
-	dis_partstart();
-	dis_partstart();
-	return;
-#endif
 	dis_partstart();
 	
 	vbuf=calloc(8192,1);

@@ -67,7 +67,7 @@ void tunneli_main(void)
 	memcpy(cosit, &sini[4097 * 2], 2048 * 2);
 	memcpy(pcalc, tun, sizeof(pcalc));
 
-	// int10h(0x13);
+	int10h(0x13);
 
 	dis_partstart();
 

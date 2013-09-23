@@ -291,11 +291,7 @@ glenz_main()
 //    _asm out dx,ax
 	outp(0x3C4, 0x0F02);
     memset(vram,0,65535);
-//    _asm
-//    {
-//        mov ax,13h
-//        int 010h
-//    }
+	int10h(0x13);
     testasm();
 
     for(a=0;a<100;a++)
@@ -638,7 +634,6 @@ glenz_main()
     dis_setcopper(0,NULL);
     if(!dis_indemo())
     {
-//        _asm mov ax,3
-//        _asm int 10h
+		int10h(0x13);
     }
 }

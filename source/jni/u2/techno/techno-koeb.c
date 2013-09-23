@@ -2,6 +2,7 @@
 // ported from koeb.asm
 //
 #include <stdint.h>
+#include "../../u2-port.h"
 
 // in ../../u2-port.c
 extern char circle[24000];
@@ -105,7 +106,9 @@ PLANE	MACRO pl
 	mov	ax,0002h+pl*100h
 	out	dx,ax
 	ENDM
+*/
 
+/*
 bltline PROC NEAR
 	push	si
 	mov	dx,3c4h
@@ -127,7 +130,9 @@ bltline PROC NEAR
 	pop	si
 	ret
 bltline ENDP
+*/
 
+/*
 bltlinerev PROC NEAR
 	push	si
 	mov	dx,3c4h
@@ -160,47 +165,34 @@ bltlinerev PROC NEAR
 	pop	si
 	ret
 bltlinerev ENDP
+*/
 
-resetmode13 PROC NEAR
-	mov	bx,1
-	int	0fch
-	mov	dx,3c8h
-	mov	al,0
-	out	dx,al
-	inc	dx
-	mov	cx,768
-@@ccc:	out	dx,al
-	loop	@@ccc
-	mov	bx,1
-	int	0fch
-	mov	ax,13
-	int	10h
-	mov	dx,3dah
-	in	al,dx
-	mov	dx,3c0h
-	xor	al,al
-	REPT 16
-	out	dx,al
-	out	dx,al
-	inc	al
-	ENDM
-	mov	al,11h
-	out	dx,al
-	mov	al,255
-	out	dx,al
-	mov	al,32
-	out	dx,al
-	;clear pal
-	mov	dx,3c8h
-	xor	al,al
-	out	dx,al
-	inc	dx
-	mov	cx,768
-@@clp:	out	dx,al
-	loop	@@clp
-	ret
-resetmode13 ENDP
+static void resetmode13(void)
+{
+	int i;
 
+	dis_waitb();
+	outportb(0x3c8, 0);
+	for (i = 0; i < 768; i++)
+		outportb(0x3c9, 0);
+	dis_waitb();
+	int10h(0x13);
+	inportb(0x3da);
+	for (i = 0; i < 16; i++)
+	{
+		outportb(0x3c0, (uint8_t)i);
+		outportb(0x3c0, (uint8_t)i);
+	}
+	outportb(0x3c0, 0x11);
+	outportb(0x3c0, 255);
+	outportb(0x3c0, 32);
+	// clear pal
+	outportb(0x3c8, 0);
+	for (i = 0; i < 768; i++)
+		outportb(0x3c9, 0);
+}
+
+/*
 mixpal	PROC NEAR
 	;cs:si=>cs:di, for cx
 	push	dx
@@ -232,7 +224,9 @@ mixpal	PROC NEAR
 	pop	dx
 	ret
 mixpal ENDP
+*/
 
+/*
 outpal	PROC NEAR
 	mov	dx,3c8h
 	out	dx,al
@@ -242,13 +236,17 @@ outpal	PROC NEAR
 	rep	outsb
 	ret
 outpal	ENDP
+*/
 
+/*
 waitb	PROC NEAR
 	mov	bx,1
 	int	0fch
 	ret
 waitb	ENDP
+*/
 
+/*
 rotate1	PROC NEAR
 	xor	si,si
 	mov	cx,32000/32-2
@@ -272,7 +270,9 @@ rotate1	PROC NEAR
 @@0:	popf
 	ret
 rotate1	ENDP
+*/
 
+/*
 ALIGN 2
 framecount dw	0
 palanimc dw	0
@@ -287,10 +287,13 @@ overrot dw	0
 overx	dw	0
 overya	dw	0
 patdir	dw	-3
+*/
 
-memseg	dw	0
+static uint16_t memseg; // TODO: foo_t *
 
-init_interference PROC NEAR
+static void init_interference(void)
+{
+/*
 	mov	dx,3d4h
 	mov	ax,2813h
 	out	dx,ax
@@ -389,9 +392,12 @@ init_interference PROC NEAR
 	loop	@@10
 	mov	cs:framecount,0
 	ret
-init_interference ENDP
+*/
+}
 
-do_interference PROC NEAR
+static void do_interference(void)
+{
+/*
 @@aga:	call	waitb
 	mov	dx,3c0h
 	mov	al,13h
@@ -593,8 +599,8 @@ do_interference PROC NEAR
 	or	ax,ax
 	jz	@@aga
 @@xx:	ret
-do_interference ENDP
 */
+}
 
 void dointerference2(void)
 {
@@ -604,8 +610,9 @@ void dointerference2(void)
 	push	si
 	push	di
 	push	ds
-	
-	call	resetmode13
+*/
+	resetmode13();
+/*
 	call	init_interference
 	call	do_interference	
 	mov	es,cs:memseg
@@ -616,6 +623,5 @@ void dointerference2(void)
 	pop	di
 	pop	si
 	pop	bp
-	ret
 */
 }

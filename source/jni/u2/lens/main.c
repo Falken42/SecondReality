@@ -76,8 +76,7 @@ static void	drawlens(int x0,int y0)
 
 static void	setvmode(int m)
 {
-	// _asm mov ax,m
-	// _asm int 10h
+	int10h(m);
 }
 
 static int	firfade1[200];

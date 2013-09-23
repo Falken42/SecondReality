@@ -122,8 +122,7 @@ dots_main(int argc,char *argv[])
 		d=dot[b].z; dot[b].z=dot[c].z; dot[c].z=d;
 	}
 	for(a=0;a<200;a++) rows[a]=a*320;
-	// _asm mov ax,13h
-	// _asm int 10h
+	int10h(0x13);
 	outp(0x3c8,0);
 	for(a=0;a<16;a++) for(b=0;b<4;b++)
 	{
@@ -284,8 +283,7 @@ dots_main(int argc,char *argv[])
 	}
 	if(!dis_indemo())
 	{
-		// _asm mov ax,3h
-		// _asm int 10h
+		int10h(0x13);
 	}
 	free(bgpic);
 	return(0);

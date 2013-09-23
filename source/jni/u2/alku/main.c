@@ -46,8 +46,7 @@ alku_main()
 	{
 	int	aa,b,c,x,y,f;
 
-//	asm	mov	ax, 3
-//	asm	int	10h
+	int10h(3);
 
 	init();
 
