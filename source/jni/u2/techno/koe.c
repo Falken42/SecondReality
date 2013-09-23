@@ -99,7 +99,7 @@ static int *	flash(int i)
 
 techno_main(int argc,char *argv[])
 {
-	char *vram=MK_FP(0x0a000,0);
+	char *const vram=MK_FP(0x0a000,0);
 	FILE	*f1;
 	int	rot=45;
 	int	x,y,b,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy,pl=1,plv=0;
@@ -291,8 +291,7 @@ techno_main(int argc,char *argv[])
 	pic=(char *)calloc(20000,4);
 	if(!pic) 
 	{
-		//_asm mov	ax,0
-		//_asm int	10h
+		int10h(0);
 		//printf("GENERAL WINDOWS VIOLATION - REMOVE WINDOWS.");
 		//getch();
 		exit(3);
@@ -308,8 +307,7 @@ techno_main(int argc,char *argv[])
 
 	if(!dis_indemo())
 	{	
-		//_asm mov ax,3
-		//_asm int 10h
+		int10h(3);
 	}
 	return(0);
 }

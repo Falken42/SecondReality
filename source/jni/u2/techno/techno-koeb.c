@@ -2,6 +2,8 @@
 // ported from koeb.asm
 //
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "../../u2-port.h"
 
 // in ../../u2-port.c
@@ -11,161 +13,119 @@ extern char circle2[8000];
 // in ../../sin1024.c
 extern int sin1024[];
 
-/*
-;################################################################
+// ################################################################
 
-sizefade dw	0
-rotspeed dw	0
-palfader dw	0
-palfader2 db	255
-zumplane db	11h
+static uint16_t sizefade;
+static uint16_t rotspeed;
+static uint16_t palfader;
+static uint8_t zumplane = 0x11;
 
-ALIGN 16
-	
-flip8 LABEL BYTE							
-db 0,128,64,192,32,160,96,224,16,144,80,208,48,176,112,240,8,136,72,200
-db 40,168,104,232,24,152,88,216,56,184,120,248,4,132,68,196,36,164,100
-db 228,20,148,84,212,52,180,116,244,12,140,76,204,44,172,108,236,28,156
-db 92,220,60,188,124,252,2,130,66,194,34,162,98,226,18,146,82,210,50,178
-db 114,242,10,138,74,202,42,170,106,234,26,154,90,218,58,186,122,250,6
-db 134,70,198,38,166,102,230,22,150,86,214,54,182,118,246,14,142,78,206
-db 46,174,110,238,30,158,94,222,62,190,126,254,1,129,65,193,33,161,97,225
-db 17,145,81,209,49,177,113,241,9,137,73,201,41,169,105,233,25,153,89,217
-db 57,185,121,249,5,133,69,197,37,165,101,229,21,149,85,213,53,181,117,245
-db 13,141,77,205,45,173,109,237,29,157,93,221,61,189,125,253,3,131,67,195
-db 35,163,99,227,19,147,83,211,51,179,115,243,11,139,75,203,43,171,107,235
-db 27,155,91,219,59,187,123,251,7,135,71,199,39,167,103,231,23,151,87,215
-db 55,183,119,247,15,143,79,207,47,175,111,239,31,159,95,223,63,191,127,255
+static const uint8_t flip8[] =
+{
+	0, 128, 64, 192, 32, 160, 96, 224, 16, 144, 80, 208, 48, 176, 112, 240, 8, 136, 72, 200,
+	40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248, 4, 132, 68, 196, 36, 164, 100,
+	228, 20, 148, 84, 212, 52, 180, 116, 244, 12, 140, 76, 204, 44, 172, 108, 236, 28, 156,
+	92, 220, 60, 188, 124, 252, 2, 130, 66, 194, 34, 162, 98, 226, 18, 146, 82, 210, 50, 178,
+	114, 242, 10, 138, 74, 202, 42, 170, 106, 234, 26, 154, 90, 218, 58, 186, 122, 250, 6,
+	134, 70, 198, 38, 166, 102, 230, 22, 150, 86, 214, 54, 182, 118, 246, 14, 142, 78, 206,
+	46, 174, 110, 238, 30, 158, 94, 222, 62, 190, 126, 254, 1, 129, 65, 193, 33, 161, 97, 225,
+	17, 145, 81, 209, 49, 177, 113, 241, 9, 137, 73, 201, 41, 169, 105, 233, 25, 153, 89, 217,
+	57, 185, 121, 249, 5, 133, 69, 197, 37, 165, 101, 229, 21, 149, 85, 213, 53, 181, 117, 245,
+	13, 141, 77, 205, 45, 173, 109, 237, 29, 157, 93, 221, 61, 189, 125, 253, 3, 131, 67, 195,
+	35, 163, 99, 227, 19, 147, 83, 211, 51, 179, 115, 243, 11, 139, 75, 203, 43, 171, 107, 235,
+	27, 155, 91, 219, 59, 187, 123, 251, 7, 135, 71, 199, 39, 167, 103, 231, 23, 151, 87, 215,
+	55, 183, 119, 247, 15, 143, 79, 207, 47, 175, 111, 239, 31, 159, 95, 223, 63, 191, 127, 255
+};
 
-circles dw	8 dup(0)
+static uint8_t *circles[8];
 
-pal	db	32*3 dup(0)
+static uint8_t pal[32 * 3];
 
-pal0 LABEL WORD
-	db	0,30,40
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,30,40
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
-	db	0,0 ,0 
+static const uint8_t pal0[] =
+{
+	// pal0
+	0, 30, 40,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 30, 40,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	0, 0, 0,
+	// pal1
+	0, 0 * 7 / 9, 0,
+	10, 10 * 7 / 9, 10,
+	20, 20 * 7 / 9, 20,
+	30, 30 * 7 / 9, 30,
+	40, 40 * 7 / 9, 40,
+	50, 50 * 7 / 9, 50,
+	60, 60 * 7 / 9, 60,
+	30, 30 * 7 / 9, 30,
+	0, 0 * 7 / 9, 0,
+	10, 10 * 7 / 9, 10,
+	20, 20 * 7 / 9, 20,
+	30, 30 * 7 / 9, 30,
+	40, 40 * 7 / 9, 40,
+	50, 50 * 7 / 9, 50,
+	60, 60 * 7 / 9, 60,
+	30, 30 * 7 / 9, 30,
+	// pal2
+	50, 50 * 6 / 9, 50,
+	60, 60 * 6 / 9, 60,
+	30, 30 * 6 / 9, 30,
+	0, 0 * 6 / 9, 0,
+	10, 10 * 6 / 9, 10,
+	20, 20 * 6 / 9, 20,
+	30, 30 * 6 / 9, 30,
+	40, 40 * 6 / 9, 40,
+	50, 50 * 6 / 9, 50,
+	60, 60 * 6 / 9, 60,
+	30, 30 * 6 / 9, 30,
+	0, 0 * 6 / 9, 0,
+	10, 10 * 6 / 9, 10,
+	20, 20 * 6 / 9, 20,
+	30, 30 * 6 / 9, 30,
+	40, 40 * 6 / 9, 40
+};
 
-pal1 LABEL WORD
-	db	 0, 0*7/9, 0
-	db	10,10*7/9,10
-	db	20,20*7/9,20
-	db	30,30*7/9,30
-	db	40,40*7/9,40
-	db	50,50*7/9,50
-	db	60,60*7/9,60
-	db	30,30*7/9,30
-	db	 0, 0*7/9, 0
-	db	10,10*7/9,10
-	db	20,20*7/9,20
-	db	30,30*7/9,30
-	db	40,40*7/9,40
-	db	50,50*7/9,50
-	db	60,60*7/9,60
-	db	30,30*7/9,30
-
-pal2 LABEL WORD	
-	db	50,50*6/9,50
-	db	60,60*6/9,60
-	db	30,30*6/9,30
-	db	 0, 0*6/9, 0
-	db	10,10*6/9,10
-	db	20,20*6/9,20
-	db	30,30*6/9,30
-	db	40,40*6/9,40
-	db	50,50*6/9,50
-	db	60,60*6/9,60
-	db	30,30*6/9,30
-	db	 0, 0*6/9, 0
-	db	10,10*6/9,10
-	db	20,20*6/9,20
-	db	30,30*6/9,30
-	db	40,40*6/9,40
-	
-sinuspower db	0
-powercnt db	0
-*/
+static const uint8_t sinuspower = 0;
 char power1[256 * 16];
 
-/*
-PLANE	MACRO pl
-	mov	dx,3c4h
-	mov	ax,0002h+pl*100h
-	out	dx,ax
-	ENDM
-*/
+static void bltline(char *dest, const char *src, uint8_t start_at_plane, int copy_planes)
+{
+	outportb(0x3c4, 2);
+	while (copy_planes--)
+	{
+		int zzz;
+		outportb(0x3c5, start_at_plane);
+		for (zzz = 0; zzz < 40; zzz++)
+			dest[zzz] = src[zzz];
+		src += 40;
+		start_at_plane <<= 1;
+	}
+}
 
-/*
-bltline PROC NEAR
-	push	si
-	mov	dx,3c4h
-	mov	al,2
-	out	dx,al
-	inc	dx
-@@1:	mov	al,ch
-	out	dx,al
-	zzz=0
-	REPT	10
-	mov	eax,ds:[si+zzz]
-	mov	es:[di+zzz],eax
-	zzz=zzz+4
-	ENDM
-	add	si,40
-	shl	ch,1
-	dec	cl
-	jnz	@@1
-	pop	si
-	ret
-bltline ENDP
-*/
-
-/*
-bltlinerev PROC NEAR
-	push	si
-	mov	dx,3c4h
-	mov	al,2
-	out	dx,al
-	inc	dx
-	xor	bx,bx
-@@1:	mov	al,ch
-	out	dx,al
-	zzz=0
-	REPT	10
-	mov	bl,ds:[si+36-zzz]
-	mov	al,cs:flip8[bx]
-	rol	eax,8
-	mov	bl,ds:[si+37-zzz]
-	mov	al,cs:flip8[bx]
-	rol	eax,8
-	mov	bl,ds:[si+38-zzz]
-	mov	al,cs:flip8[bx]
-	rol	eax,8
-	mov	bl,ds:[si+39-zzz]
-	mov	al,cs:flip8[bx]
-	mov	es:[di+zzz],eax
-	zzz=zzz+4
-	ENDM
-	add	si,40
-	shl	ch,1
-	dec	cl
-	jnz	@@1
-	pop	si
-	ret
-bltlinerev ENDP
-*/
+static void bltlinerev(char *dest, const char *src, uint8_t start_at_plane, int copy_planes)
+{
+	outportb(0x3c4, 2);
+	while (copy_planes--)
+	{
+		int zzz;
+		outportb(0x3c5, start_at_plane);
+		for (zzz = 0; zzz < 40; zzz++)
+			dest[zzz] = flip8[src[39 - zzz]];
+		src += 40;
+		start_at_plane <<= 1;
+	}
+}
 
 static void resetmode13(void)
 {
@@ -192,213 +152,123 @@ static void resetmode13(void)
 		outportb(0x3c9, 0);
 }
 
-/*
-mixpal	PROC NEAR
-	;cs:si=>cs:di, for cx
-	push	dx
-	cmp	dx,256
-	jg	@@2
-	mov	bx,dx
-@@1:	mov	al,cs:[si]
-	xor	ah,ah
-	inc	si
-	mul	bx
-	shr	ax,8
-	mov	cs:[di],al
-	inc	di
-	loop	@@1
-	pop	dx
-	ret
-@@2:	mov	bx,dx
-	sub	bx,256	
-@@4:	mov	al,cs:[si]
-	xor	ah,ah
-	inc	si
-	add	ax,bx
-	cmp	ax,64
-	jb	@@3
-	mov	al,63
-@@3:	mov	cs:[di],al
-	inc	di
-	loop	@@4
-	pop	dx
-	ret
-mixpal ENDP
-*/
+static void mixpal(uint8_t *dest, const uint8_t *src, int bytes, int dx)
+{
+	if (dx <= 256)
+		while (bytes--)
+			*dest++ = (uint8_t)((*src++ * dx) >> 8);
+	else
+	{
+		const int bx = dx - 256;
+		while (bytes--)
+		{
+			const int ax = *src++ + bx;
+			*dest++ = (uint8_t)((ax < 64) ? ax : 63);
+		}
+	}
+}
 
-/*
-outpal	PROC NEAR
-	mov	dx,3c8h
-	out	dx,al
-	mov	ax,cs
-	mov	ds,ax
-	inc	dx
-	rep	outsb
-	ret
-outpal	ENDP
-*/
+static void outpal(uint8_t start, const uint8_t *src, int bytes)
+{
+	outportb(0x3c8, start);
+	while (bytes--)
+		outportb(0x3c9, *src++);
+}
 
-/*
-waitb	PROC NEAR
-	mov	bx,1
-	int	0fch
-	ret
-waitb	ENDP
-*/
+static void waitb(void)
+{
+	dis_waitb();
+}
 
-/*
-rotate1	PROC NEAR
-	xor	si,si
-	mov	cx,32000/32-2
-	cld
-	jmp	@@2
-	;edx.eax
-@@1:	popf
-	zzz=0
-	REPT 16
-	mov	ax,ds:[si+zzz]
-	rcr	al,1
-	rcr	ah,1
-	mov	es:[si+zzz],ax
-	zzz=zzz+2
-	ENDM
-@@2:	pushf
-	add	si,zzz
-	dec	cx
-	jz	@@0
-	jmp	@@1
-@@0:	popf
-	ret
-rotate1	ENDP
-*/
+static void rotate1(uint8_t *dest, const uint8_t *src)
+{
+	int si = 0, carry = 0, cx = 32000 / 32 - 2, zzz = 32;
+	for (;;)
+	{
+		si += zzz;
+		if (!--cx)
+			break;
+		for (zzz = 0; zzz < 32; zzz++)
+		{
+			const int al = src[si + zzz], old_carry = carry;
+			carry = al & 1;
+			dest[si + zzz] = (uint8_t)((old_carry << 7) | (al >> 1));
+		}
+	}
+}
 
-/*
-ALIGN 2
-framecount dw	0
-palanimc dw	0
-palanimc2 dw	0
-scrnpos dw	0
-scrnposl dw	0
-scrnx	dw	0
-scrny	dw	0
-scrnrot dw	0
-sinurot dw	0
-overrot dw	0
-overx	dw	0
-overya	dw	0
-patdir	dw	-3
-*/
+static uint16_t framecount;
+static uint16_t palanimc;
+static uint16_t palanimc2;
+static uint16_t scrnpos;
+static uint16_t scrnposl;
+static uint16_t scrnx;
+static uint16_t scrny;
+static uint16_t scrnrot;
+static uint16_t sinurot;
+static uint16_t overrot;
+static uint16_t overx;
+static uint16_t overya;
+static uint16_t patdir = (uint16_t)-3;
 
-static uint16_t memseg; // TODO: foo_t *
+static uint8_t *memseg;
 
 static void init_interference(void)
 {
-/*
-	mov	dx,3d4h
-	mov	ax,2813h
-	out	dx,ax
-	
-	mov	bx,20+100*80
-	
-	;get mem for circles
-	mov	ah,48h
-	mov	bx,16384
-	int	21h
-	mov	cs:memseg,ax
-	zzz=0
-	REPT 8
-	mov	cs:circles[zzz],ax
-	add	ax,2048
-	zzz=zzz+2
-	ENDM
-	
-	mov	ax,SEG _circle2
-	mov	ds,ax
-	xor	si,si
-	mov	ax,0a000h
-	mov	es,ax
-	mov	cx,200
-	xor	di,di
-	mov	bp,80*399
-@@1:	push	cx
-	push	di
-	mov	cx,0401h
-	call	bltline
-	add	di,40
-	mov	cx,0401h
-	call	bltlinerev
-	add	di,40
-	mov	di,bp
-	mov	cx,0401h
-	call	bltline
-	add	di,40
-	mov	cx,0401h
-	call	bltlinerev
-	add	di,40
-	pop	di
-	add	di,80
-	sub	bp,80
-	add	si,40
-	pop	cx
-	loop	@@1
-	
-	mov	dx,3ceh
-	mov	ax,0204h
-	out	dx,ax
-	mov	cx,400
-	mov	es,cs:circles[0]
-	mov	ax,0a000h
-	mov	ds,ax
-	mov	cx,32000/4
-	xor	si,si
-	xor	di,di
-	rep	movsd
-	zzz=0
-	REPT	7	
-	mov	ds,cs:circles[zzz]
-	mov	es,cs:circles[zzz+2]
-	call	rotate1
-	zzz=zzz+2
-	ENDM
+	char *const vram = MK_FP(0x0a000, 0);
+	char *di, *bp;
+	const char *si;
+	int zzz;
 
-	mov	ax,SEG _circle
-	mov	ds,ax
-	xor	si,si
-	mov	ax,0a000h
-	mov	es,ax
-	mov	cx,200
-	xor	di,di
-	mov	bp,80*399
-@@10:	push	cx
-	push	di
-	mov	cx,0103h ;start at plane 1, copy 3 planes
-	call	bltline
-	add	di,40
-	mov	cx,0103h ;start at plane 1, copy 3 planes
-	call	bltlinerev
-	add	di,40
-	mov	di,bp
-	mov	cx,0103h ;start at plane 1, copy 3 planes
-	call	bltline
-	add	di,40
-	mov	cx,0103h ;start at plane 1, copy 3 planes
-	call	bltlinerev
-	add	di,40
-	pop	di
-	add	di,80
-	sub	bp,80
-	add	si,40*3
-	pop	cx
-	loop	@@10
-	mov	cs:framecount,0
-	ret
-*/
+	outport(0x3d4, 0x2813);
+
+	// get mem for circles
+	memseg = (uint8_t *)malloc(32768 * 8);
+	for (zzz = 0; zzz < 8; zzz++)
+		circles[zzz] = memseg + (zzz << 15);
+
+	si = circle2;
+	di = vram;
+	bp = vram + 80 * 399;
+	for (zzz = 0; zzz < 200; zzz++)
+	{
+		bltline(di, si, 4, 1);
+		bltlinerev(di + 40, si, 4, 1);
+		bltline(bp, si, 4, 1);
+		bltlinerev(bp + 40, si, 4, 1);
+		di += 80;
+		bp -= 80;
+		si += 40;
+	}
+
+	outport(0x3ce, 0x204);
+
+	memcpy(circles[0], vram, 32000);
+	for (zzz = 0; zzz < 7; zzz++)
+		rotate1(circles[zzz + 1], circles[zzz]);
+
+	si = circle;
+	di = vram;
+	bp = vram + 80 * 399;
+	for (zzz = 0; zzz < 200; zzz++)
+	{
+		bltline(di, si, 1, 3); // start at plane 1, copy 3 planes
+		bltlinerev(di + 40, si, 1, 3); // start at plane 1, copy 3 planes
+		bltline(bp, si, 1, 3); // start at plane 1, copy 3 planes
+		bltlinerev(bp + 40, si, 1, 3); // start at plane 1, copy 3 planes
+		di += 80;
+		bp -= 80;
+		si += 40 * 3;
+	}
+
+	framecount = 0;
 }
 
 static void do_interference(void)
 {
 /*
-@@aga:	call	waitb
+@@aga:
+	waitb();
 	mov	dx,3c0h
 	mov	al,13h
 	out	dx,al
@@ -410,17 +280,19 @@ static void do_interference(void)
 	xor	al,al
 	mov	si,OFFSET pal
 	mov	cx,16*3
-	call	outpal
+	outpal(al, si, cx);
 
 	mov	si,cs:palanimc
 	add	si,cs:patdir
 	cmp	si,0
 	jge	@@a11
 	mov	si,8*3-3
-@@a11:	cmp	si,8*3
+@@a11:
+	cmp	si,8*3
 	jb	@@a1
 	xor	si,si
-@@a1:	mov	cs:palanimc,si
+@@a1:
+	mov	cs:palanimc,si
 	mov	cs:palanimc2,si
 
 	mov	dx,cs:palfader
@@ -428,23 +300,24 @@ static void do_interference(void)
 	cmp	dx,512
 	jb	@@pf1
 	mov	dx,512
-@@pf1:	mov	cs:palfader,dx
-;
+@@pf1:
+	mov	cs:palfader,dx
+
 	mov	si,cs:palanimc
 	add	si,OFFSET pal0
 	mov	di,OFFSET pal
 	mov	cx,8*3
-	call	mixpal
+	mixpal(di, si, cx, dx);
 	mov	si,cs:palanimc
 	add	si,OFFSET pal0
 	mov	di,OFFSET pal+8*3
 	mov	cx,8*3
-	call	mixpal
+	mixpal(di, si, cx, dx);
 
 	mov	si,OFFSET pal
 	mov	al,0
 	mov	cx,16*3
-	call	outpal
+	outpal(al, si, cx);
 
 	jmp	@@OVER3
 	mov	dx,3c4h
@@ -463,7 +336,8 @@ static void do_interference(void)
 	and	bp,2047
 	mov	cs:sinurot,bp
 	mov	cx,200
-@@cp1:	zzz=0
+@@cp1:
+	zzz=0
 	push	si
 	add	bp,9*2
 	and	bp,2047
@@ -502,7 +376,8 @@ static void do_interference(void)
 	cmp	bx,0
 	jne	@@m1
 	mov	cs:patdir,-3
-@@m1:	cmp	bx,4
+@@m1:
+	cmp	bx,4
 	jne	@@m2
 	mov	cs:patdir,-3 ;-3
 @@m2:
@@ -517,8 +392,8 @@ static void do_interference(void)
 	mov	ax,cs:sizefade
 	cmp	ax,16834
 	jge	@@1
-	;add	ax,256
-@@1:	mov	cs:sizefade,ax
+@@1:
+	mov	cs:sizefade,ax
 @@szf1:
 	shl	bx,1
 	mov	ax,cs:_sin1024[bx]
@@ -580,16 +455,7 @@ static void do_interference(void)
 	jb	@@asd2
 	test	cs:framecount,3
 	jnz	@@asd2
-@@asd2:	
-;	cmp	cs:framecount,256
-;	jb	@@p1
-;	inc	cs:powercnt
-;	cmp	cs:powercnt,16
-;	jb	@@p1
-;	mov	cs:powercnt,0
-;	cmp	cs:sinuspower,15
-;	jae	@@p1
-;	inc	cs:sinuspower
+@@asd2:
 @@p1:
 	inc	cs:framecount
 	cmp	cs:framecount,256
@@ -598,30 +464,15 @@ static void do_interference(void)
 	int	0fch
 	or	ax,ax
 	jz	@@aga
-@@xx:	ret
+@@xx:
+	ret
 */
 }
 
 void dointerference2(void)
 {
-/*
-	push	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-*/
 	resetmode13();
-/*
-	call	init_interference
-	call	do_interference	
-	mov	es,cs:memseg
-	mov	ah,49h
-	int	21h
-	
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-*/
+	init_interference();
+	do_interference();
+	free(memseg);
 }
