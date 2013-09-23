@@ -209,7 +209,7 @@ techno_main(int argc,char *argv[])
 	// TODO: while(!dis_exit() && dis_musplus()<-4) ;
 	dis_setmframe(0);
 
-	dointerference2();
+	dis_partstart(); return 0; // TODO: dointerference2();
 	
 	initinterference();
 
