@@ -755,7 +755,7 @@ void ascrolltext(int scrl, int *text)
 {
 }
 
-// from beg/asm.asm, end/asm.asm
+// from beg/asm.asm, techno/koea.asm, end/asm.asm
 void lineblit(char *buf, char *row)
 {
 	int zpl, zzz;

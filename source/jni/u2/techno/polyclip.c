@@ -4,24 +4,24 @@
 //
 // variables below come from techno-koea.c:
 // - static unsigned polyisides;
-// - static int16_t polyixy[16][2];
+// - static int polyixy[16][2];
 // - static unsigned polysides;
-// - static int16_t polyxy[16][2];
+// - static int polyxy[16][2];
 //
 // and the only function externalized from this file is clipanypoly()
 //
 #include <stdint.h>
 
-static int16_t WMINY;
-static int16_t WMAXY = 199;
-static int16_t WMINX;
-static int16_t WMAXX = 319;
+static int WMINY;
+static int WMAXY = 199;
+static int WMINX;
+static int WMAXX = 319;
 
-static int16_t clip_x1;
-static int16_t clip_y1;
-static int16_t clip_x2;
-static int16_t clip_y2;
-static int16_t clipxy2[32][2]; // tmp storage for polyclip
+static int clip_x1;
+static int clip_y1;
+static int clip_x2;
+static int clip_y2;
+static int clipxy2[32][2]; // tmp storage for polyclip
 
 static unsigned cliplinex(void);
 static unsigned clipliney(void);
@@ -41,7 +41,7 @@ static void clipanypoly_cap2r(void)
 static void clipanypoly(void) // polyisides/polyixy =>polysides/polyxy
 {
 	unsigned ax, cx, di;
-	int16_t xxx, yyy;
+	int xxx, yyy;
 	if (polyisides <= 2)
 	{
 		polysides = 0;
@@ -73,7 +73,7 @@ static void clipanypoly(void) // polyisides/polyixy =>polysides/polyxy
 	cx = polyisides;
 	di = 0;
 	polysides = 0;
-	xxx = yyy = 0x8000; // TODO:
+	xxx = yyy = -32768;
 	while (cx)
 	{
 		if (!ax)
@@ -128,7 +128,7 @@ static void clipanypoly(void) // polyisides/polyixy =>polysides/polyxy
 	cx = polysides;
 	di = 0;
 	polysides = 0;
-	xxx = yyy = 0x8000; // TODO:
+	xxx = yyy = -32768;
 	while (cx)
 	{
 		if (!ax)
@@ -174,14 +174,14 @@ static unsigned clipcheck(int reg, int min, int max, unsigned flagmin, unsigned 
 	return flagreg;
 }
 
-static void clipmacro(int16_t *v1, int16_t v2, int16_t *w1, int16_t w2, int16_t wl)
+static void clipmacro(int *v1, int v2, int *w1, int w2, int wl)
 {
 	const int cx = w2 - *w1;
 	if (!cx)
 		*w1 = wl;
 	else
 	{
-		*v1 += (int16_t)((v2 - *v1) * (wl - *w1) / cx);
+		*v1 += (v2 - *v1) * (wl - *w1) / cx;
 		*w1 = wl;
 	}
 }

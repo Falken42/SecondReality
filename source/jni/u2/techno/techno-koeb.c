@@ -169,14 +169,13 @@ static void outpal(uint8_t start, const uint8_t *src, unsigned bytes)
 		outportb(0x3c9, *src++);
 }
 
-static void waitb(void)
-{
-	dis_waitb();
-}
-
 static unsigned framecount;
 static int palanimc;
-static int patdir = -3;
+static int scrnpos;
+static int scrnposl;
+static int scrnx;
+static int scrny;
+static const int patdir = -3;
 
 static void init_interference(void)
 {
@@ -223,15 +222,10 @@ static void do_interference(void)
 {
 	do
 	{
-		static const uint16_t scrnpos = 80 * 100 + (160 >> 3);
-		int row;
-
-		waitb();
+		dis_waitb();
 		outportb(0x3c0, 0x13);
-		outportb(0x3c0, 0);
+		outportb(0x3c0, (uint8_t)scrnposl);
 		outportb(0x3c0, 32);
-
-		outpal(0, pal, 16 * 3);
 
 		palanimc += patdir;
 		if (palanimc < 0)
@@ -248,13 +242,14 @@ static void do_interference(void)
 
 		outpal(0, pal, 16 * 3);
 
-		// MOVE
-		row = dis_musrow() & 7;
-		if (!row || (row == 4))
-			patdir = -3;
+		scrnx = 160;
+		scrny = 100;
 
-		outport(0x3d4, (scrnpos & 0xff00) | 0x0c);
-		outport(0x3d4, (scrnpos << 8) | 0x0d);
+		scrnposl = scrnx & 7;
+		scrnpos = 80 * scrny + (scrnx >> 3);
+
+		outport(0x3d4, (uint16_t)((scrnpos & 0xff00) | 0x0c));
+		outport(0x3d4, (uint16_t)((scrnpos << 8) | 0x0d));
 	}
 	while ((++framecount < 256) && !dis_exit());
 }
