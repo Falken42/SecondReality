@@ -102,11 +102,7 @@ static void demo_init()
 	}
 
 	// init some VGA register defaults
-	vga_chain4	   = 0x08;
-	vga_attr_reg   = 0;
-	vga_start	   = 0;
-	vga_plane_mask = 0x01;
-	vga_horiz_pan  = 0;
+	int10h(0x13);
 
 	// initialize demo state
 	frame_count     = 0;
@@ -422,14 +418,6 @@ void demo_execute()
 	dis_partstart();
 //	glenz_main();
 
-	// EVEN MORE HACK:
-	demo_set_video_mode(320, 200, 320);
-	outp(0x3C4, 2);
-	outp(0x3C5, 1);
-	outp(0x3C4, 4);
-	outp(0x3C5, 8);
-
-	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	tunneli_main();
 
 	techno_main();
@@ -437,19 +425,10 @@ void demo_execute()
 	dis_partstart(); // PANICEND.EXE
 	dis_partstart(); // MNTSCRL.EXE
 
-	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	lens_main();
 
 	dis_partstart(); // PLZPART.EXE
 
-	// USUAL HACK: lens changes video mode during execution
-	demo_set_video_mode(320, 200, 320);
-	outp(0x3C4, 2);
-	outp(0x3C5, 1);
-	outp(0x3C4, 4);
-	outp(0x3C5, 8);
-
-	memset(vga_buffer, 0, 65536); // HACK: depends on previous part?
 	dots_main();
 
 	dis_partstart(); // RAYSCRL.EXE
@@ -786,6 +765,19 @@ void setpalarea(char *pal, int start, int cnt)
 void int10h(unsigned short mode)
 {
 	LOGI("int10h(0x%04x): not implemented yet", mode);
+
+	if (mode == 0x13) // HACK: based on nothing
+	{
+		vga_chain4	   = 0x08;
+		vga_attr_reg   = 0;
+		vga_start	   = 0;
+		vga_plane_mask = 0x01;
+		vga_horiz_pan  = 0;
+		vga_max_scan   = 0;
+
+		demo_set_video_mode(320, 200, 320);
+		memset(vga_buffer, 0, 65536);
+	}
 }
 
 int dis_indemo()

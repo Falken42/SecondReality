@@ -534,9 +534,11 @@ int	doit3(int count)
 		h=open("techno-troll.up",O_BINARY|O_RDONLY);
 		dis_waitb();
 		read(h,p,40000);
+#if 0 // TODO: what should we do?
 		dis_waitb();
-		*(uint16_t *)&p[2]=40000/16;
+		_asm add word ptr p[2],40000/16
 		read(h,p,40000);
+#endif
 		close(h);
 	}
 
@@ -566,7 +568,7 @@ int	doit3(int count)
 
 	while(!dis_exit())
 	{
-		a=0; // TODO: np_ord (main/stmik.h)
+		a=36; // TODO: np_ord (main/stmik.h)
 		b=dis_musrow();
 		if(a>35 || (a==35 && b>48)) break;
 	}
