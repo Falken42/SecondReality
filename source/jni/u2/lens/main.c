@@ -197,7 +197,7 @@ static void	part3(void)
 	}
 	waitb();
 	setpalarea(fade+64*64*3,0,64);
-	inittwk();
+	lens_inittwk();
 	{
 		double	d1,d2,d3,scale,scaleb,scalea;
 		int	flag=1;

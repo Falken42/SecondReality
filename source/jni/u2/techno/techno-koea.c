@@ -26,6 +26,8 @@ static int polyxy[16][2];
 extern int sin1024[];
 
 static void blitinit(void);
+static void blit16(const char *vbuf, char *vram);
+static void blit16b(const char *vbuf, char *vram);
 
 void asminit(char *vbuf)
 {
@@ -33,43 +35,15 @@ void asminit(char *vbuf)
 	blitinit();
 }
 
-/*
-PUBLIC _asmdoit	
-_asmdoit PROC FAR
-	push 	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	lds	si,[bp+6]
-	les	di,[bp+10]
-	call	blit16
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-_asmdoit ENDP
-*/
+void asmdoit(const char *vbuf, char *vram)
+{
+	blit16(vbuf, vram);
+}
 
-/*
-PUBLIC _asmdoit2
-_asmdoit2 PROC FAR
-	push 	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	lds	si,[bp+6]
-	les	di,[bp+10]
-	call	blit16b
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-_asmdoit2 ENDP
-*/
+void asmdoit2(const char *vbuf, char *vram)
+{
+	blit16b(vbuf, vram);
+}
 
 static void blitinit(void)
 {
@@ -90,63 +64,55 @@ static void blitinit(void)
 	}
 }
 
-/*
-blit16	PROC NEAR
-	xor	ebx,ebx
-	mov	cx,200	
-	jmp	@@1
-	ALIGN	16
-@@1:	zzz=0
-	xor	dh,dh ;line starts black
-	REPT	40/2
-	mov	bl,ds:[si+zzz]
-	xor	bl,dh
-	mov	ax,cs:_blit16t[ebx*2]
-	mov	bl,ds:[si+1+zzz]
-	xor	bl,ah
-	mov	dx,cs:_blit16t[ebx*2]
-	mov	ah,dl
-	mov	es:[di+zzz],ax
-	zzz=zzz+2
-	ENDM
-	add	si,40
-	add	di,40
-	dec	cx
-	jz	@@2
-	jmp	@@1
-@@2:
-	ret
-blit16	ENDP
-*/
+static void blit16(const char *vbuf, char *vram)
+{
+	int cx;
 
+	for (cx = 0; cx < 200; cx++)
+	{
+		int zzz;
+
+		// dh = 0; // line starts black
+		for (zzz = 0; zzz < 40; zzz += 2)
+		{
 /*
-blit16b	PROC NEAR
-	xor	ebx,ebx
-	mov	cx,200	
-	jmp	@@1
-	ALIGN	16
-@@1:	zzz=0
-	xor	dh,dh ;line starts black
-	REPT	40/2
-	mov	bl,ds:[si+zzz]
-	xor	bl,dh
-	mov	ax,cs:_blit16t[ebx*2]
-	mov	bl,ds:[si+1+zzz]
-	xor	bl,ah
-	mov	dx,cs:_blit16t[ebx*2]
-	mov	ah,dl
-	mov	es:[di+zzz],ax
-	zzz=zzz+2
-	ENDM
-	add	si,40
-	add	di,80
-	dec	cx
-	jz	@@2
-	jmp	@@1
-@@2:
-	ret
-blit16b	ENDP
+			bl = vbuf[zzz] ^ dh;
+			ax = _blit16t[bl];
+			bl = vbuf[1 + zzz] ^ ah;
+			dx = _blit16t[bl];
+			ah = dl;
+			*(uint16_t *)&vram[zzz] = ax;
 */
+		}
+		vbuf += 40;
+		vram += 40;
+	}
+}
+
+static void blit16b(const char *vbuf, char *vram)
+{
+	int cx;
+
+	for (cx = 0; cx < 200; cx++)
+	{
+		int zzz;
+
+		// dh = 0; // line starts black
+		for (zzz = 0; zzz < 40; zzz += 2)
+		{
+/*
+			bl = vbuf[zzz] ^ dh;
+			ax = _blit16t[bl];
+			bl = vbuf[1 + zzz] ^ ah;
+			dx = _blit16t[bl];
+			ah = dl;
+			*(uint16_t *)&vram[zzz] = ax;
+*/
+		}
+		vbuf += 40;
+		vram += 80;
+	}
+}
 
 /*
 drawline PROC NEAR
@@ -352,9 +318,9 @@ l2:	IF lbl1 EQ @@r7
 drawline ENDP
 */
 
+void asmbox(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
+{
 /*
-PUBLIC _asmbox	
-_asmbox PROC FAR
 	push 	bp
 	mov	bp,sp
 	push	si
@@ -400,8 +366,8 @@ _asmbox PROC FAR
 	pop	si
 	pop	bp
 	ret
-_asmbox ENDP
 */
+}
 
 // ################################################################
 
@@ -652,7 +618,7 @@ static void do_interference(void)
 				sinuspower++;
 		}
 	}
-	while ((framecount < 925) && !dis_exit()); // TODO: should work with dis_getmframe()
+	while ((dis_getmframe() < 925) && !dis_exit());
 }
 
 void initinterference(void)
@@ -666,50 +632,23 @@ void dointerference(void)
 	free(memseg);
 }
 
-/*
-PUBLIC _inittwk
-_inittwk PROC FAR
-	push	bp
-	mov	bp,sp
-	push	si
-	push	di
-	push	ds
-	;clear palette
-	mov	dx,3c8h
-	xor	al,al
-	out	dx,al
-	inc	dx
-	mov	cx,768
-@@1:	out	dx,al
-	loop	@@1
-	;400 rows
-	mov	dx,3d4h
-	mov	ax,00009h
-	out	dx,ax
-	;tweak
-	mov	dx,3d4h
-	mov	ax,00014h
-	out	dx,ax
-	mov	ax,0e317h
-	out	dx,ax
-	mov	dx,3c4h
-	mov	ax,0604h
-	out	dx,ax
-	;
-	mov	dx,3c4h
-	mov	ax,0f02h
-	out	dx,ax
-	mov	ax,0a000h
-	mov	es,ax
-	xor	di,di
-	mov	cx,32768
-	xor	ax,ax
-	rep	stosw
-	;
-	pop	ds
-	pop	di
-	pop	si
-	pop	bp
-	ret
-_inittwk ENDP
-*/
+void techno_inittwk(void)
+{
+	int i;
+
+	// clear palette
+	outportb(0x3c8, 0);
+	for (i = 0; i < 768; i++)
+		outportb(0x3c9, 0);
+
+	// 400 rows
+	outport(0x3d4, 0x0009);
+
+	// tweak
+	outport(0x3d4, 0x0014);
+	outport(0x3d4, 0xe317);
+	outport(0x3c4, 0x0604);
+
+	outport(0x3c4, 0x0f02);
+	memset(MK_FP(0x0a000, 0), 0, 65536);
+}

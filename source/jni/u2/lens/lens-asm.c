@@ -76,7 +76,7 @@ void dorow3(const uint16_t *lens, int u, int y, int bits)
 	}
 }
 
-void inittwk(void)
+void lens_inittwk(void)
 {
 	int i;
 

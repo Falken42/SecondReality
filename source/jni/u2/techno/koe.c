@@ -19,7 +19,7 @@ static char *vbuf;
 
 static char	pal[16*16*3];
 
-//char *vram=(char *)0xa0000000L;
+static char *vram=(char *)0xa0000000L;
 
 static int	curpal=0;
 
@@ -99,7 +99,6 @@ static int *	flash(int i)
 
 techno_main(int argc,char *argv[])
 {
-	char *const vram=MK_FP(0x0a000,0);
 	FILE	*f1;
 	int	rot=45;
 	int	x,y,b,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy,pl=1,plv=0;
@@ -231,6 +230,7 @@ techno_main(int argc,char *argv[])
 	outportb(0x3c0,0);
 	outportb(0x3c0,0x20);
 	outport(0x3c4,0x0f02);
+	vram=MK_FP(0xa000,0);
 	memset(vram,0,64000);
 	outport(0x3c4,0x0f02);
 	memset(vram,255,8000);
@@ -314,7 +314,6 @@ techno_main(int argc,char *argv[])
 
 int	doit1(int count)
 {
-#if 0
 	int	rot=45;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy;
 	int	vma,vm;
@@ -351,18 +350,12 @@ int	doit1(int count)
 			}
 			vma--;
 		}
-		_asm mov dx,3c4h
-		_asm mov ah,pl
-		_asm mov al,2
-		_asm out dx,ax
+		outport(0x3c4,(uint16_t)((pl<<8)|2));
 		asmdoit(vbuf,vram);
 		a=plv*0x20;
-		_asm mov dx,3d4h
-		_asm mov al,0ch
-		_asm mov ah,byte ptr a
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0c));
 		plv++; plv&=7;
-		vram=(char *)(0xa0000000L+0x2000000L*(long)plv);
+		vram=MK_FP(0xa000+0x200*plv,0);
 		if(!plv)
 		{
 			pl<<=1;
@@ -370,12 +363,10 @@ int	doit1(int count)
 		}
 		setborder(0);
 	}
-#endif
 }
 
 int	doit2(int count)
 {
-#if 0
 	int	rot=50,rota=10;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,hx,hy,vx,vy,cx,cy;
 	int	vma,vm;
@@ -413,18 +404,12 @@ int	doit2(int count)
 			vma--;
 			rota++;
 		}
-		_asm mov dx,3c4h
-		_asm mov ah,pl
-		_asm mov al,2
-		_asm out dx,ax
+		outport(0x3c4,(uint16_t)((pl<<8)|2));
 		asmdoit(vbuf,vram);
 		a=plv*0x20;
-		_asm mov dx,3d4h
-		_asm mov al,0ch
-		_asm mov ah,byte ptr a
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0c));
 		plv++; plv&=7;
-		vram=(char *)(0xa0000000L+0x2000000L*(long)plv);
+		vram=MK_FP(0xa000+0x200*plv,0);
 		if(!plv)
 		{
 			pl<<=1;
@@ -432,12 +417,10 @@ int	doit2(int count)
 		}
 		setborder(0);
 	}
-#endif
 }
 
 int	doit3(int count)
 {
-#if 0
 	int	rot=45,rota=10,rot2=0;
 	int	x,y,c,x1,y1,x2,y2,x3,y3,x4,y4,a,b,hx,hy,vx,vy,cx,cy,wx,wy;
 	int	vma,vm,xpos=320,xposa=0;
@@ -447,26 +430,14 @@ int	doit3(int count)
 	waitborder();
 	outp(0x3c8,0);
 	for(a=0;a<16*3;a++) outp(0x3c9,0);
-	_asm
-	{
-		mov	dx,3c4h
-		mov	ax,0f02h
-		out	dx,ax
-	}
-	vram=(char *)(0xa0000000L);
+	outport(0x3c4,0x0f02);
+	vram=MK_FP(0xa000,0);
 	memset(vram,0,32768);
 	memset(vram+32768,0,32768);
-	_asm 
-	{
-		mov	dx,3d4h
-		mov	ax,0dh+256*40
-		out	dx,ax
-		mov	ax,0ch+256*0
-		out	dx,ax
-		mov	ax,13h+256*40
-		out	dx,ax
-	}
-	vram=(char *)(0xa0000000L+40);
+	outport(0x3d4,0x0d+256*40);
+	outport(0x3d4,0x0c+256*0);
+	outport(0x3d4,0x13+256*40);
+	vram=MK_FP(0xa000,40);
 	plv=0; pl=1;
 	while(!dis_exit() && count>0)
 	{
@@ -498,21 +469,13 @@ int	doit3(int count)
 		}
 		rot2+=17;
 		a=xpos/8;
-		_asm mov dx,3d4h
-		_asm mov ah,byte ptr a
-		_asm mov al,0dh
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0d));
 		count-=(repeat=waitborder());
 		a=xpos&7;
-		_asm mov dx,3dah
-		_asm in al,dx
-		_asm mov dx,3c0h
-		_asm mov al,13h
-		_asm out dx,al
-		_asm mov al,byte ptr a
-		_asm out dx,al
-		_asm mov al,20h
-		_asm out dx,al
+		inportb(0x3da);
+		outportb(0x3c0,0x13);
+		outportb(0x3c0,(uint8_t)a);
+		outportb(0x3c0,0x20);
 		setborder(1);
 		memset(vbuf,0,8000);		
 		{
@@ -543,18 +506,12 @@ int	doit3(int count)
 			}
 			rota++;
 		}
-		_asm mov dx,3c4h
-		_asm mov ah,pl
-		_asm mov al,2
-		_asm out dx,ax
+		outport(0x3c4,(uint16_t)((pl<<8)|2));
 		asmdoit2(vbuf,vram);
 		a=plv*0x20;
-		_asm mov dx,3d4h
-		_asm mov al,0ch
-		_asm mov ah,byte ptr a
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0c));
 		plv+=2; plv&=7;
-		vram=(char *)(0xa0000000L+0x2000000L*(long)plv+40);
+		vram=MK_FP(0xa000+0x200*plv,40);
 		if(!plv)
 		{
 			pl<<=1;
@@ -563,16 +520,10 @@ int	doit3(int count)
 		setborder(0);
 	}
 
-	_asm mov ax,13h
-	_asm int 10h
-	inittwk();
-	_asm 
-	{
-		mov	dx,3d4h
-		mov	ax,13h+256*80
-		out	dx,ax
-	}
-	vram=(char *)(0xa0000000L);
+	int10h(0x13);
+	techno_inittwk();
+	outport(0x3d4,0x13+256*80);
+	vram=MK_FP(0xa000,0);
 
 	if(dis_exit()) return;
 	
@@ -580,11 +531,11 @@ int	doit3(int count)
 		FILE	*f1;
 		int	h;
 		char	*p=pic;
-		h=open("troll.up",O_BINARY|O_RDONLY);
+		h=open("techno-troll.up",O_BINARY|O_RDONLY);
 		dis_waitb();
 		read(h,p,40000);
 		dis_waitb();
-		_asm add word ptr p[2],40000/16
+		*(uint16_t *)&p[2]=40000/16;
 		read(h,p,40000);
 		close(h);
 	}
@@ -615,13 +566,8 @@ int	doit3(int count)
 
 	while(!dis_exit())
 	{
-		_asm
-		{
-			mov	bx,6
-			int	0fch
-			mov	b,bx
-			mov	a,cx
-		}
+		a=0; // TODO: np_ord (main/stmik.h)
+		b=dis_musrow();
 		if(a>35 || (a==35 && b>48)) break;
 	}
 	count=300;
@@ -633,21 +579,13 @@ int	doit3(int count)
 		if(xpos>320) xpos=320;
 		else xposa++;
 		a=xpos/4;
-		_asm mov dx,3d4h
-		_asm mov ah,byte ptr a
-		_asm mov al,0dh
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0d));
 		count-=dis_waitb();
 		a=(xpos&3)*2;
-		_asm mov dx,3dah
-		_asm in al,dx
-		_asm mov dx,3c0h
-		_asm mov al,13h
-		_asm out dx,al
-		_asm mov al,byte ptr a
-		_asm out dx,al
-		_asm mov al,20h
-		_asm out dx,al
+		inportb(0x3da);
+		outportb(0x3c0,0x13);
+		outportb(0x3c0,(uint8_t)a);
+		outportb(0x3c0,0x20);
 	}
 	count=50; c=0;
 	ripple=0; ripplep=8;
@@ -658,21 +596,13 @@ int	doit3(int count)
 		xpos=320+sin1024[ripple&1023]/ripplep;
 		ripple+=ripplep+100;
 		a=xpos/4;
-		_asm mov dx,3d4h
-		_asm mov ah,byte ptr a
-		_asm mov al,0dh
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0d));
 		count-=dis_waitb();
 		a=(xpos&3)*2;
-		_asm mov dx,3dah
-		_asm in al,dx
-		_asm mov dx,3c0h
-		_asm mov al,13h
-		_asm out dx,al
-		_asm mov al,byte ptr a
-		_asm out dx,al
-		_asm mov al,20h
-		_asm out dx,al
+		inportb(0x3da);
+		outportb(0x3c0,0x13);
+		outportb(0x3c0,(uint8_t)a);
+		outportb(0x3c0,0x20);
 		if(c<16)
 		{
 			setpalarea(palfade+c*768,0,256);
@@ -686,21 +616,12 @@ int	doit3(int count)
 		a=dis_musplus();
 		if(a>-6 && a<16) break;
 		a=xpos/4;
-		_asm mov dx,3d4h
-		_asm mov ah,byte ptr a
-		_asm mov al,0dh
-		_asm out dx,ax
+		outport(0x3d4,(uint16_t)((a<<8)|0x0d));
 		count-=dis_waitb();
 		a=(xpos&3)*2;
-		_asm mov dx,3dah
-		_asm in al,dx
-		_asm mov dx,3c0h
-		_asm mov al,13h
-		_asm out dx,al
-		_asm mov al,byte ptr a
-		_asm out dx,al
-		_asm mov al,20h
-		_asm out dx,al
+		inportb(0x3da);
+		outportb(0x3c0,0x13);
+		outportb(0x3c0,(uint8_t)a);
+		outportb(0x3c0,0x20);
 	}
-#endif
 }

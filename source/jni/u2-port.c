@@ -47,6 +47,7 @@ char lensexp[18864]; // lens/_lensexp.obk
 char lensexb[64784 + 4224]; // lens/_lensexb.obk + lens/_filler.obk
 
 // internal variables (for timing, vga emulation, etc)
+static int np_zframe; // declared in main/stmik.h; for dis_{get|set}mframe()
 static int last_frame_time;
 static int dis_sync_val, dis_sync_time, dis_partid = 0;
 static void (*dis_routine[3])();
@@ -920,7 +921,8 @@ int dis_exit()
 			do_pal = 0;
 		}
 
-		frame_count++;
+		frame_count++; // done in PROC copper2 (alku/copper.asm)
+		np_zframe++;
 		last_frame_time = now;
 
 		// render this frame
@@ -932,12 +934,12 @@ int dis_exit()
 
 void dis_setmframe(int frame)
 {
-	frame_count = frame;
+	np_zframe = frame;
 }
 
 int dis_getmframe()
 {
-	return frame_count;
+	return np_zframe;
 }
 
 void dis_setcopper(int routine_number, void (*routine)())
