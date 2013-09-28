@@ -6,14 +6,6 @@
 // part 1: alku
 char  hzpic[65535 + 63250];		// sizes calced from parsed .inc data
 char  font[32][1500];			// incremented to 32 to handle out-of-bounds access in alku
-int   frame_count;
-char *cop_pal;
-int   do_pal;
-int   cop_start;
-int   cop_scrl;
-int   cop_dofade;
-char *cop_fadepal;
-char  fadepal[768*2];
 
 // part3: pam
 char  pal[769 + (768 * 64)];			// size from pal.inc plus 768*64 buffer in pam/include.asm
@@ -48,7 +40,7 @@ char lensexb[64784 + 4224]; // lens/_lensexb.obk + lens/_filler.obk
 
 // internal variables (for timing, vga emulation, etc)
 static int np_zframe; // declared in main/stmik.h; for dis_{get|set}mframe()
-static int last_frame_time;
+static int internal_vbl_count, last_frame_time;
 static int dis_sync_val, dis_sync_time, dis_partid = 0;
 static void (*dis_routine[3])();
 static unsigned int vga_width, vga_height, vga_stride, vga_start, vga_vert_total;
@@ -105,13 +97,13 @@ static void demo_init()
 	int10h(0x13);
 
 	// initialize demo state
-	frame_count     = 0;
-	last_frame_time = platform_get_usec();
-	dis_sync_val    = 0;
-	dis_sync_time   = last_frame_time;
+	internal_vbl_count	= 0;
+	last_frame_time		= platform_get_usec();
+	dis_sync_val		= 0;
+	dis_sync_time		= last_frame_time;
 
 	for (t = 0; t < 3; t++)
-		dis_routine[t] = NULL;
+		dis_setcopper(t, NULL);
 }
 
 static void demo_set_video_mode(int width, int height, int stride)
@@ -407,11 +399,8 @@ void demo_execute()
 	pam_main();
 
 	// HACK: until we can properly determine the resolution from the VGA registers
-    tw_opengraph();
+	outport(0x3C4, 0x0604); // turn off chain-4
 	demo_set_video_mode(320, 400, 320);
-	cop_start  = 0;		// <-- this is a hack too. beg_main() probably initializes these on the VGA though.
-	cop_scrl   = 0;
-	cop_dofade = 0;
 
 	beg_main();
 	dis_partstart();
@@ -441,12 +430,9 @@ void demo_execute()
 	memcpy(pic, tmp, size);
 	free(tmp);
 
-	// HACK: again.
-    tw_opengraph();
+	// HACK: until we can properly determine the resolution from the VGA registers
+	outport(0x3C4, 0x0604); // turn off chain-4
 	demo_set_video_mode(320, 400, 320);
-	cop_start  = 0;
-	cop_scrl   = 0;
-	cop_dofade = 0;
 
 	end_main();
 
@@ -457,11 +443,8 @@ void demo_execute()
 	dis_partid = 3;
 
 	// HACK: until we can properly determine the resolution from the VGA registers
-    tw_opengraph();
+	outport(0x3C4, 0x0604); // turn off chain-4
 	demo_set_video_mode(320, 400, 320);
-	cop_start  = 0;		// <-- this is a hack too. beg_main() probably initializes these on the VGA though.
-	cop_scrl   = 0;
-	cop_dofade = 0;
 
 	beg_main();
 	glenz_main();
@@ -619,7 +602,7 @@ void outportb(unsigned short int port, unsigned char val)
 					vga_vert_total &= 0xFF00;
 					vga_vert_total |= val;
 					LOGI("vertical: vga_vert_total = %d", vga_vert_total);
-					demo_set_video_mode(vga_width, (vga_vert_total + 2) / 2.235, vga_stride);
+					demo_set_video_mode(vga_width, (int)((vga_vert_total + 2) / 2.235f), vga_stride);
 					break;
 
 				case 0x07:
@@ -628,7 +611,10 @@ void outportb(unsigned short int port, unsigned char val)
 					vga_vert_total |= ((int)val & 0x01) << 8;
 					vga_vert_total |= ((int)val & 0x20) << (9 - 5);
 					LOGI("overflow: vga_vert_total = %d", vga_vert_total);
-					demo_set_video_mode(vga_width, (vga_vert_total + 2) / 2.235, vga_stride);
+					demo_set_video_mode(vga_width, (int)((vga_vert_total + 2) / 2.235f), vga_stride);
+					// HACK: alku: 320x372 visible, with 704 pixel stride (176*4)
+					if (dis_partid == 1)
+						demo_set_video_mode(320, 372, 704);
 					break;
 
 				case 0x09:
@@ -692,74 +678,6 @@ unsigned char inportb(unsigned short int port)
 			break;
 	}
 	return val;
-}
-
-
-// from alku/asmyt.asm
-void outline(char *src, char *dest)
-{
-	int mrol = 0x08, cnt, ccc;
-
-	for (cnt = 4; cnt > 0; cnt--)
-	{
-		const char *si = src + cnt - 1;
-		char *di = dest;
-
-		outport(0x3C4, (mrol << 8) | 0x02);
-
-		di[-352      ] = 0;
-		di[-352 + 176] = 0;
-
-		for (ccc = 0; ccc < 75; ccc++)
-		{
-			const char al = si[ccc * 640];
-			di[ccc * 352] = al;
-			di[ccc * 352 + 176] = al;
-		}
-
-		si += 75*40 * 16;		// scale by 16 for segment offset
-
-		for (ccc = 0; ccc < 75; ccc++)
-		{
-			const char al = si[ccc * 640];
-			di[ccc * 352 + 75 * 352] = al;
-			di[ccc * 352 + 75 * 352 + 176] = al;
-		}
-
-		mrol >>= 1;
-	}
-}
-
-// from alku/asmyt.asm
-void ascrolltext(int scrl, int *text)
-{
-}
-
-// from beg/asm.asm, techno/koea.asm, end/asm.asm
-void lineblit(char *buf, char *row)
-{
-	int zpl, zzz;
-
-	for (zpl = 0; zpl < 4; zpl++)
-	{
-		outport(0x3C4, 0x02 + (0x100 << zpl));
-
-		for (zzz = 0; zzz < 80; zzz += 2)
-		{
-			const uint8_t al = *(row + (zzz+0) * 4 + zpl);
-			const uint8_t ah = *(row + (zzz+1) * 4 + zpl);
-			*((uint16_t *)(buf + zzz)) = ((int)ah << 8) | al;
-		}
-	}
-}
-
-// from beg/asm.asm, lens/asm.asm, end/asm.asm
-void setpalarea(char *pal, int start, int cnt)
-{
-	outportb(0x3C8, start);
-	cnt = (cnt << 1) + cnt;
-	while (cnt--)
-		outportb(0x3C9, *pal++);
 }
 
 void int10h(unsigned short mode)
@@ -833,8 +751,8 @@ void dis_partstart()
 int dis_waitb()
 {
 	// wait for vblank
-	frame_count = 0;
-	while (frame_count < 1 && !dis_exit());
+	const int old = internal_vbl_count;
+	while ((internal_vbl_count == old) && !dis_exit());
 	return 1;
 }
 
@@ -859,61 +777,17 @@ int dis_exit()
 	int t;
 	const int now = platform_get_usec();
 
-//	LOGI("dis_exit: frame_count = %d", frame_count);
-
-	// call registered callbacks
-	for (t = 0; t < 3; t++)
-	{
-		if (dis_routine[t] != NULL)
-			dis_routine[t]();
-	}
-
 	// render a frame every 16.667 msec (60Hz vblank)
 	if ((now - last_frame_time) >= 16667)
 	{
 		// copy current VGA buffer to the proper plane
 		vga_flush_buffer();
 
-		// handle copper scrolling (func: copper1, alku/copper.asm)
-		outport(0x3D4, ((cop_start & 0x00FF) << 8) | 0x0D);
-		outport(0x3D4,  (cop_start & 0xFF00)       | 0x0C);
-		outportb(0x3C0, 0x33);
-		outportb(0x3C0, cop_scrl);
+		dis_routine[1](); // 1=just before retrace (AVOID USING THIS IF POSSIBLE)
+		dis_routine[0](); // 0=after display start (about scan line 25)
+		dis_routine[2](); // 2=in the retrace
 
-		// handle copper fading (func: copper3, alku/copper.asm)
-		if (cop_dofade)
-		{
-			const uint16_t *src = (const uint16_t *)cop_fadepal;
-			uint8_t *dest = fadepal;
-			int ccc, cnt = 768 / 16;
-
-			cop_dofade--;
-			cop_pal = fadepal;
-			do_pal = 1;
-
-			while (cnt--)
-			{
-				for (ccc = 0; ccc < 16; ccc++)
-				{
-					const int ax  = src[ccc*2];
-					const int sum = dest[ccc + 768] + (ax & 0xFF);
-					dest[ccc + 768]  = sum & 0xFF;
-					dest[ccc      ] += (ax >> 8) + (sum >> 8);
-				}
-
-				dest += 16;
-				src  += 32;
-			}
-		}
-
-		// handle copper palette updates (func: copper2, alku/copper.asm)
-		if (do_pal)
-		{
-			tw_setpalette(cop_pal);
-			do_pal = 0;
-		}
-
-		frame_count++; // done in PROC copper2 (alku/copper.asm)
+		internal_vbl_count++;
 		np_zframe++;
 		last_frame_time = now;
 
@@ -934,95 +808,11 @@ int dis_getmframe()
 	return np_zframe;
 }
 
+static void nil() {}
+
 void dis_setcopper(int routine_number, void (*routine)())
 {
-	dis_routine[routine_number] = routine;
-}
-
-void init_copper()
-{
-}
-
-void close_copper()
-{
-}
-
-// note: there are multiple tweak.asm sources, each with their own different implementation of tw_opengraph
-void tw_opengraph()
-{
-	// turn off chain-4
-	outport(0x3C4, 0x0604);
-
-	switch (dis_partid)
-	{
-		case 1:
-			outport(0x3D4, 0x0014);		// crtc long off
-			outport(0x3D4, 0xE317);		// crtc byte on
-			outport(0x3D4, 0x0009);		// 400 (?)
-			outport(0x3D4, 0x5813);		// 640 wide (?)
-			// alku: 320x372 visible, with 704 pixel stride (176*4)
-			demo_set_video_mode(320, 372, 704);
-			break;
-
-		case 3:
-			// pam: 320x200, unchained
-			demo_set_video_mode(320, 200, 320);
-			break;
-	}
-}
-
-void tw_putpixel(int x, int y, int color)
-{
-	int offset = x >> 2;
-
-	// select write plane based on X coordinate
-	const int plane = 1 << (x & 3);
-	outport(0x3C4, (plane << 8) | 0x02);
-
-	// calculate offset
-	y <<= 4; offset += y;
-	y <<= 1; offset += y;
-	y <<= 2; offset += y;
-
-	// write the pixel
-	*(MK_FP(0xA000, offset)) = color;
-}
-
-int tw_getpixel(int x, int y)
-{
-	int offset = x >> 2;
-
-	// select read plane based on X coordinate
-	outport(0x3CE, ((x & 3) << 8) | 0x04);
-
-	// calculate offset
-	y <<= 4; offset += y;
-	y <<= 1; offset += y;
-	y <<= 2; offset += y;
-
-	// read the pixel
-	return *(MK_FP(0xA000, offset));
-}
-
-void tw_setpalette(char *pal)
-{
-	uint8_t *ptr = (uint8_t *)pal;
-	int cnt = 768;
-
-	outportb(0x3C8, 0);
-	while (cnt--)
-		outportb(0x3C9, *ptr++);
-}
-
-void tw_setstart(int s)
-{
-	cop_start = s;
-}
-
-void tw_waitvr()
-{
-	// TODO: is this timing sufficient?
-	dis_waitb();
+	dis_routine[routine_number] = routine ? routine : nil;
 }
 
 int fcrand()
@@ -1030,4 +820,3 @@ int fcrand()
 	// Android RAND_MAX is 2^31, which breaks the demo.  clamp to [0,32767] inclusive.
 	return rand() % 32768;
 }
-

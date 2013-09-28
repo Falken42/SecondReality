@@ -37,14 +37,7 @@ extern void dis_setmframe(int frame);
 extern int  dis_getmframe();
 extern void dis_setcopper(int routine_number, void (*routine)());
 
-extern void tw_opengraph();
-extern void tw_putpixel(int x, int y, int color);
-extern int  tw_getpixel(int x, int y);
-extern void tw_setpalette(char *pal);
-extern void tw_setstart(int s);
-
 // functions which need wrapping because of C library differences
 extern int fcrand();
 
 #endif // U2_PORT
-

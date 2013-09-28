@@ -1,17 +1,18 @@
 #include "../../u2-port.h"
+#include "tweak.h"
 
 #define SCRLF 9
 
-extern	init_copper();
-extern	close_copper();
-extern	far int frame_count;
-extern  far char * far cop_pal;
-extern  far int do_pal;
-extern  far int cop_start;
-extern  far int cop_scrl;
-extern	far int cop_dofade;
-extern	far char * far cop_fadepal;
-extern 	far char fadepal[];
+extern	alku_init_copper();
+extern	alku_close_copper();
+extern	far int alku_frame_count;
+extern  far char * far alku_cop_pal;
+extern  far int alku_do_pal;
+extern  far int alku_cop_start;
+extern  far int alku_cop_scrl;
+extern	far int alku_cop_dofade;
+extern	far char * far alku_cop_fadepal;
+extern 	far char alku_fadepal[];
 
 extern char far hzpic[];
 extern outline(char far *f, char far *t);
@@ -73,26 +74,26 @@ alku_main()
 
 	while(dis_sync()<4 && !dis_exit());
 
-	memcpy(fadepal,fade1,768);
-	cop_fadepal=picin;
-	cop_dofade=128;
-	for(a=1,p=1,f=0,frame_count=0;cop_dofade!=0 && !dis_exit();)
+	memcpy(alku_fadepal,fade1,768);
+	alku_cop_fadepal=picin;
+	alku_cop_dofade=128;
+	for(a=1,p=1,f=0,alku_frame_count=0;alku_cop_dofade!=0 && !dis_exit();)
 		do_scroll(2);
 
 	for(f=60;a<320 && !dis_exit();)
 		{
 		if(f==0) {
-			cop_fadepal=textin;
-			cop_dofade=64;
+			alku_cop_fadepal=textin;
+			alku_cop_dofade=64;
 			f+=20;
 			}
 		else if(f==50) {
-			cop_fadepal=textout;
-			cop_dofade=64;
+			alku_cop_fadepal=textout;
+			alku_cop_dofade=64;
 			f++;
 			}
-		else if(f>50 && cop_dofade==0) {
-			cop_pal=palette; do_pal=1; f++;
+		else if(f>50 && alku_cop_dofade==0) {
+			alku_cop_pal=palette; alku_do_pal=1; f++;
 			memset(tbuf,0,186*320);
 			switch(tptr++) {
 			case 0:
@@ -143,16 +144,16 @@ alku_main()
 		dofade(palette2,palette);
 		}
 	fonapois();
-	close_copper();
+	alku_close_copper();
 	}
 
 init()	{
 	int	a,b,c,x,y,p=0,f;
 
 	dis_partstart();
-	tw_opengraph();
-	init_copper();
-	tw_setpalette(fade1);
+	alku_tw_opengraph();
+	alku_init_copper();
+	alku_tw_setpalette(fade1);
 	memcpy(palette,hzpic+16,768);
 
 	for(a=0;a<88;a++)
@@ -239,7 +240,7 @@ init()	{
 
 wait(int t)
 	{
-	while(frame_count<t && !dis_exit()); frame_count=0;
+	while(alku_frame_count<t && !dis_exit()); alku_frame_count=0;
 	}
 
 fonapois()
@@ -276,7 +277,7 @@ prt(int x,int y,char *txt)
 			for(y2=y;y2<y2w;y2++)
 			{
 				d=font[y2-y][sx];
-				tw_putpixel(x2,y2,tw_getpixel(x2,y2)|d);
+				alku_tw_putpixel(x2,y2,alku_tw_getpixel(x2,y2)|d);
 			}
 			sx++;
 		}
@@ -302,8 +303,8 @@ dofade(char far *pal1, char far *pal2)
 	for(a=0;a<64 && !dis_exit();a++)
 		{
 		for(b=0;b<768;b++) pal[b]=(pal1[b]*(64-a)+pal2[b]*a>>6);
-		cop_pal=pal; do_pal=1;
-		while(frame_count<1 && !dis_exit()); frame_count=0;
+		alku_cop_pal=pal; alku_do_pal=1;
+		while(alku_frame_count<1 && !dis_exit()); alku_frame_count=0;
 		}
 	}
 char	fuckpal[768];
@@ -314,7 +315,7 @@ fdofade(char far *pal1, char far *pal2, int a)
 
 	if(a<0 || a>64) return(0);
 	for(b=0;b<768;b++) fuckpal[b]=(pal1[b]*(64-a)+pal2[b]*a>>6);
-	cop_pal=fuckpal; do_pal=1;
+	alku_cop_pal=fuckpal; alku_do_pal=1;
 	}
 
 addtext(int tx,int ty,char *txt)
@@ -393,11 +394,11 @@ scrolltext(int scrl)
 
 do_scroll(int mode)
 	{
-	if(mode==0 && frame_count<SCRLF && !dis_exit()) return(0);
-	while(frame_count<SCRLF && !dis_exit());
-	frame_count-=SCRLF;
+	if(mode==0 && alku_frame_count<SCRLF && !dis_exit()) return(0);
+	while(alku_frame_count<SCRLF && !dis_exit());
+	alku_frame_count-=SCRLF;
 	if(mode==1) ascrolltext(a+p*352,dtau);
-	cop_start=a/4+p*88; cop_scrl=(a&3)*2;
+	alku_cop_start=a/4+p*88; alku_cop_scrl=(a&3)*2;
 
 	if((a&3)==0)
 		{

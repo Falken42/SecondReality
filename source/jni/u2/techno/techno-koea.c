@@ -1,6 +1,5 @@
 //
 // ported from koea.asm
-// note: setpalarea(),lineblit() reside in u2-port.c
 //
 #include <stdint.h>
 #include <stdlib.h>

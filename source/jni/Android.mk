@@ -17,9 +17,10 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := secondreality-android
-LOCAL_SRC_FILES := u2-port.c platform-android.c readp.c sin1024.c \
-	u2/alku/main.c \
-	u2/pam/outtaa.c u2/pam/pam-asm.c \
+LOCAL_SRC_FILES := \
+	u2-port.c platform-android.c readp.c sin1024.c lineblit.c setpalarea.c \
+	u2/alku/main.c u2/alku/alku-asmyt.c u2/alku/alku-copper.c u2/alku/alku-tweak.c \
+	u2/pam/outtaa.c u2/pam/pam-asmyt.c u2/pam/pam-copper.c u2/pam/pam-tweak.c \
 	u2/beg/beg.c \
 	u2/glenz/glenz-main.c u2/glenz/zoomer.c u2/glenz/glenz-asm.c \
 	u2/tunneli/tun10.c \

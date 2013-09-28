@@ -1,6 +1,5 @@
 //
 // ported from asm.asm
-// note: setpalarea() resides in u2-port.c
 //
 #include <stdint.h>
 #include <string.h>

@@ -13,9 +13,9 @@ solution "u2"
 		flags {"WinMain", "StaticRuntime"}
 		language "C"
 		files {
-			"../jni/u2-port.c", "../jni/platform-win32.c", "../jni/readp.c", "../jni/sin1024.c",
-			"../jni/u2/alku/main.c",
-			"../jni/u2/pam/outtaa.c", "../jni/u2/pam/pam-asm.c",
+			"../jni/u2-port.c", "../jni/platform-win32.c", "../jni/readp.c", "../jni/sin1024.c", "../jni/lineblit.c", "../jni/setpalarea.c",
+			"../jni/u2/alku/main.c", "../jni/u2/alku/alku-asmyt.c", "../jni/u2/alku/alku-copper.c", "../jni/u2/alku/alku-tweak.c",
+			"../jni/u2/pam/outtaa.c", "../jni/u2/pam/pam-asmyt.c", "../jni/u2/pam/pam-copper.c", "../jni/u2/pam/pam-tweak.c",
 			"../jni/u2/beg/beg.c",
 			"../jni/u2/glenz/glenz-main.c", "../jni/u2/glenz/glenz-asm.c", "../jni/u2/glenz/zoomer.c",
 			"../jni/u2/tunneli/tun10.c",
